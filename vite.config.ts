@@ -9,8 +9,12 @@ export default defineConfig({
         adonisjs({
             entryPoints: ['resources/css/app.css', 'resources/js/search.js', 'resources/js/panel.js'],
             reload: ['resources/views/**/*.edge'],
+            // Harus sama dengan config/vite.ts; service worker (public/sw.js) juga menyimpan berkas dari /build.
+            buildDirectory: 'public/build',
+            assetsUrl: '/build',
         }),
-        vue(),
+        // Gambar di public/ (mis. /images/brand/...) dirujuk apa adanya, tidak ikut dibundel Vite.
+        vue({ template: { transformAssetUrls: { base: null, includeAbsolute: false } } }),
         tailwindcss(),
     ],
     resolve: {

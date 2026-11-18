@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import { FlexRender, tableFeatures, useTable } from '@tanstack/vue-table';
 import { CircleAlert, Globe, Pencil, Search, SearchX, Trash2, X } from 'lucide-vue-next';
 import AddDomainBar from '@/components/AddDomainBar.vue';
+import DomainOwnerPicker from '@/components/DomainOwnerPicker.vue';
 import AppButton from '@/components/AppButton.vue';
 import AppPagination from '@/components/AppPagination.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
@@ -18,14 +19,22 @@ import { getErrorMessage } from '@/lib/apiErrors';
 import { debounce } from '@/lib/debounce';
 import { hostOf } from '@/lib/siteAddress';
 import { useToast } from '@/composables/useToast';
+import { useAuthStore } from '@/stores/auth';
 
 const PER_PAGE = 10;
 const SEARCH_DELAY_MS = 300;
 
 // Lebar kolom tetap (table-fixed) supaya judul panjang terpotong rapi, bukan mendorong kolom lain keluar layar.
 // Kolom sekunder disembunyikan di layar kecil; status tetap tampil di dalam kolom "Situs".
+// Superadmin melihat situs semua member; filter ini memilih semua situs atau hanya miliknya.
+const OWNER_FILTERS = [
+    { value: 'all', label: 'Semua member' },
+    { value: 'mine', label: 'Situs saya' },
+];
+
 const COLUMN_CLASSES = {
     site: '',
+    owner: 'hidden w-52 lg:table-cell',
     status: 'hidden w-48 sm:table-cell',
     pages: 'hidden w-24 text-right md:table-cell',
     lastCrawledAt: 'hidden w-40 lg:table-cell',
@@ -41,6 +50,9 @@ const errorMessage = ref('');
 const searchText = ref('');
 const activeKeyword = ref('');
 const registeredCount = ref(0);
+const authStore = useAuthStore();
+const ownerFilter = ref('all');
+const newSiteOwner = ref(null);
 const editingDomain = ref(null);
 const isEditDialogOpen = ref(false);
 let latestRequestId = 0;
@@ -78,9 +90,23 @@ const columns = [
                             : null,
                     ]),
                     h('p', { class: 'truncate text-xs' }, h(SiteAddress, { url: row.original.url })),
+                    authStore.isSuperadmin && !isOwnSite(row.original)
+                        ? h('p', { class: 'mt-0.5 truncate text-xs text-ink-500 lg:hidden' }, `Milik ${row.original.owner.name}`)
+                        : null,
                     h('div', { class: 'mt-1.5 sm:hidden' }, h(StatusBadge, { status: row.original.crawl_status })),
                 ]),
             ]),
+    },
+    {
+        id: 'owner',
+        header: 'Pemilik',
+        cell: ({ row }) =>
+            isOwnSite(row.original)
+                ? h('span', { class: 'text-sm text-ink-400' }, 'Anda')
+                : h('div', { class: 'min-w-0' }, [
+                      h('p', { class: 'truncate text-sm text-ink-800' }, row.original.owner.name),
+                      h('p', { class: 'truncate font-mono text-xs text-ink-500' }, row.original.owner.email),
+                  ]),
     },
     {
         id: 'status',
@@ -107,7 +133,7 @@ const columns = [
         id: 'actions',
         header: () => h('span', { class: 'sr-only' }, 'Aksi'),
         cell: ({ row }) =>
-            h('div', { class: 'relative z-10 flex items-center justify-end gap-1' }, [
+            h('div', { class: 'relative z-10 flex items-center justify-end gap-1' }, !row.original.can_manage ? [] : [
                 h(
                     'button',
                     {
@@ -134,7 +160,14 @@ const columns = [
     },
 ];
 
-const table = useTable({ features: tableFeatures({}), columns, data: domains });
+function isOwnSite(domain) {
+    return domain.owner?.id === authStore.currentUser?.id;
+}
+
+const visibleColumns = authStore.isSuperadmin ? columns : columns.filter((column) => column.id !== 'owner');
+const table = useTable({ features: tableFeatures({}), columns: visibleColumns, data: domains });
+
+watch(ownerFilter, () => loadDomains(1));
 
 async function loadDomains(page = pagination.value.page) {
     const requestId = ++latestRequestId;
@@ -144,7 +177,7 @@ async function loadDomains(page = pagination.value.page) {
 
     try {
         const response = await http.get('/domains', {
-            params: { page, per_page: PER_PAGE, q: keyword || undefined },
+            params: { page, per_page: PER_PAGE, q: keyword || undefined, owner: authStore.isSuperadmin ? ownerFilter.value : undefined },
         });
 
         // Jawaban dari ketikan sebelumnya yang datang terlambat diabaikan.
@@ -237,7 +270,7 @@ onMounted(() => loadDomains(1));
             <div class="pointer-events-none absolute inset-0 -z-10 bg-grid-fade" aria-hidden="true" />
             <div class="mx-auto max-w-6xl px-4 pt-10 pb-12 sm:px-6 sm:pt-14 sm:pb-16">
                 <h1 id="domains-heading" class="font-display text-3xl font-semibold tracking-tight text-ink-50 sm:text-4xl">
-                    Domain saya
+                    {{ authStore.isSuperadmin && ownerFilter === 'all' ? 'Semua situs' : 'Domain saya' }}
                 </h1>
                 <p class="mt-2 text-ink-400">
                     <template v-if="hasLoadedOnce && !errorMessage">
@@ -247,13 +280,17 @@ onMounted(() => loadDomains(1));
                     Tambahkan satu atau beberapa situs sekaligus.
                 </p>
                 <div class="mt-7 max-w-2xl">
-                    <AddDomainBar @finished="handleBatchFinished" />
+                    <DomainOwnerPicker v-if="authStore.isSuperadmin" v-model="newSiteOwner" class="mb-3" />
+                    <AddDomainBar :owner-id="newSiteOwner?.id ?? null" @finished="handleBatchFinished" />
                 </div>
             </div>
         </section>
 
         <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
-            <div v-if="registeredCount > 0 || activeKeyword" class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div
+                v-if="registeredCount > 0 || activeKeyword || authStore.isSuperadmin"
+                class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+            >
                 <div class="relative w-full sm:max-w-sm">
                     <label for="domain-search" class="sr-only">Cari link Anda</label>
                     <Search class="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-ink-400" aria-hidden="true" />
@@ -274,6 +311,24 @@ onMounted(() => loadDomains(1));
                         @click="clearSearch"
                     >
                         <X class="size-4" />
+                    </button>
+                </div>
+                <div
+                    v-if="authStore.isSuperadmin"
+                    class="flex rounded-full border border-ink-200 bg-surface p-1 shadow-card sm:order-last"
+                    role="group"
+                    aria-label="Saring pemilik situs"
+                >
+                    <button
+                        v-for="filter in OWNER_FILTERS"
+                        :key="filter.value"
+                        type="button"
+                        class="h-9 flex-1 cursor-pointer rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors sm:flex-none"
+                        :class="ownerFilter === filter.value ? 'bg-ink-900 text-ink-50' : 'text-ink-600 hover:bg-ink-100'"
+                        :aria-pressed="ownerFilter === filter.value"
+                        @click="ownerFilter = filter.value"
+                    >
+                        {{ filter.label }}
                     </button>
                 </div>
                 <p class="text-sm text-ink-500" aria-live="polite">

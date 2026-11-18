@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/id';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import App from '@/App.vue';
+import { APP_NAME } from '@/lib/brand';
 import { installStaleBuildRecovery } from '@/lib/staleBuild';
 
 /**
@@ -19,7 +20,7 @@ export function createSpa(router) {
     const serverTitle = document.title;
 
     router.afterEach((to) => {
-        const appName = import.meta.env.VITE_APP_NAME;
+        const appName = APP_NAME;
         document.title = to.meta.title ? `${to.meta.title} · ${appName}` : serverTitle;
     });
 

@@ -100,6 +100,7 @@ Tidak ada pendaftaran atau kata sandi lokal. Alurnya:
 
 Peran disimpan di tabel roles/permissions (seperti lacak-hp dan revenue): `superadmin` dan `member`. Superadmin bisa:
 
+- melihat dan mengelola situs **semua member**: daftar situs menampilkan pemiliknya (filter *Semua member* / *Situs saya*), dan saat menambah situs superadmin bisa memilih member pemiliknya; member tetap hanya melihat dan mengelola situs miliknya sendiri,
 - mengaktifkan/menonaktifkan akun (akun yang dinonaktifkan langsung keluar dari sesi yang sedang berjalan),
 - menjadikan akun lain superadmin atau member (tidak bisa mengubah atau menonaktifkan dirinya sendiri),
 - **mereset 2FA** pengguna yang ponselnya hilang/ganti (menu **Pengguna** → *Reset 2FA*): kunci dan recovery code lama langsung tidak berlaku, dan saat 2FA diwajibkan pengguna diminta memindai QR baru ketika masuk berikutnya,

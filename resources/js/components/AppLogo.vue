@@ -1,4 +1,6 @@
 <script setup>
+import { APP_NAME } from '@/lib/brand';
+
 defineProps({
     size: { type: String, default: 'md', validator: (value) => ['md', 'lg'].includes(value) },
     // "light" untuk latar gelap (halaman pengunjung), "dark" untuk latar terang (panel).
@@ -7,7 +9,7 @@ defineProps({
     isMarkOnlyOnMobile: { type: Boolean, default: false },
 });
 
-const appName = import.meta.env.VITE_APP_NAME;
+const appName = APP_NAME;
 </script>
 
 <template>

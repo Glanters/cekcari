@@ -1,5 +1,5 @@
 <script setup>
-import { onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useForm } from 'vee-validate';
 import { ArrowLeft, ArrowUpRight, CircleAlert } from 'lucide-vue-next';
 import AppButton from '@/components/AppButton.vue';
@@ -15,6 +15,7 @@ import http from '@/lib/http';
 import { getErrorMessage, getFieldErrors } from '@/lib/apiErrors';
 import { combine, isRequired, isValidSiteAddress } from '@/lib/validators';
 import { useToast } from '@/composables/useToast';
+import { useAuthStore } from '@/stores/auth';
 
 const props = defineProps({
     id: { type: String, required: true },
@@ -115,6 +116,11 @@ watch(
 );
 
 onBeforeUnmount(stopStatusPolling);
+
+const authStore = useAuthStore();
+
+// Superadmin bisa membuka situs member lain; pemiliknya ditampilkan agar jelas situs siapa yang diubah.
+const isOtherMembersSite = computed(() => domain.value !== null && domain.value.owner?.id !== authStore.currentUser?.id);
 </script>
 
 <template>
@@ -164,6 +170,10 @@ onBeforeUnmount(stopStatusPolling);
                         </a>
                         <StatusBadge :status="domain.crawl_status" />
                     </div>
+                    <p v-if="isOtherMembersSite" class="mt-2 text-sm text-ink-500">
+                        Milik <span class="font-medium text-ink-800">{{ domain.owner.name }}</span>
+                        <span class="font-mono text-xs">({{ domain.owner.email }})</span>
+                    </p>
                 </div>
             </header>
 
@@ -179,6 +189,7 @@ onBeforeUnmount(stopStatusPolling);
                     </section>
 
                     <form
+                        v-if="domain.can_manage"
                         class="rounded-3xl border border-ink-200/70 bg-surface p-6"
                         novalidate
                         aria-labelledby="change-link-heading"
@@ -211,7 +222,7 @@ onBeforeUnmount(stopStatusPolling);
                 </div>
 
                 <aside class="flex flex-col gap-6 lg:col-span-1">
-                    <PromotionToggle :domain="domain" @updated="applyStatusUpdate" />
+                    <PromotionToggle v-if="domain.can_manage" :domain="domain" @updated="applyStatusUpdate" />
                     <DomainStatusPanel :domain="domain" @updated="applyStatusUpdate" />
                 </aside>
             </div>

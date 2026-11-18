@@ -7,6 +7,11 @@ import http from '@/lib/http';
 import { getErrorMessage, getFieldErrors } from '@/lib/apiErrors';
 import { MAX_SITES_PER_BATCH, parseSiteAddresses } from '@/lib/siteAddress';
 
+const props = defineProps({
+    // Diisi superadmin yang mendaftarkan situs atas nama member; null berarti untuk diri sendiri.
+    ownerId: { type: Number, default: null },
+});
+
 const emit = defineEmits(['finished']);
 
 const MAX_VISIBLE_ROWS = 6;
@@ -40,13 +45,13 @@ async function addSite(item) {
     item.message = 'Membaca situs…';
 
     try {
-        const response = await http.post('/domains', { url: item.address });
+        const response = await http.post('/domains', { url: item.address, user_id: props.ownerId ?? undefined });
         item.status = 'added';
         item.message = response.data.data.title;
         item.domainId = response.data.data.id;
     } catch (error) {
         item.status = 'failed';
-        item.message = getFieldErrors(error).url ?? getErrorMessage(error);
+        item.message = getFieldErrors(error).url ?? getFieldErrors(error).user_id ?? getErrorMessage(error);
     }
 }
 
