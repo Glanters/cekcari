@@ -5,6 +5,7 @@ import '#start/routes/search'
 import '#start/routes/panel_auth'
 import '#start/routes/panel_domains'
 import '#start/routes/panel_admin'
+import '#start/routes/panel_statistics'
 import '#start/routes/pages'
 
 import router from '@adonisjs/core/services/router'

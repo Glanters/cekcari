@@ -101,47 +101,6 @@ test.group('API pencarian', (group) => {
         assert.properties(response.body().errors, ['page', 'per_page'])
     })
 
-    test('memberikan saran pencarian dari judul domain yang masih terdaftar', async ({ client }) => {
-        await createDomain({ title: 'Kopi Nusantara' })
-        await softDelete(await createDomain({ title: 'Kopi Rahasia' }))
-
-        const response = await search(client).get('/api/v1/search-suggestions?q=kop')
-
-        response.assertStatus(200)
-        response.assertBody({ success: true, message: 'Saran pencarian berhasil diambil', data: { items: ['Kopi Nusantara'] } })
-    })
-
-    test('memberikan saran dari tag milik domain yang masih terdaftar', async ({ client, assert }) => {
-        await attachTag(await createDomain({ title: 'Situs B' }), 'kulineran')
-        await attachTag(await createDomain({ title: 'Situs C' }), 'kuliah')
-        const removedDomain = await createDomain({ title: 'Situs D' })
-        await attachTag(removedDomain, 'kuliahan')
-        await softDelete(removedDomain)
-
-        const response = await search(client).get('/api/v1/search-suggestions?q=kul')
-
-        response.assertStatus(200)
-        assert.sameMembers(response.body().data.items, ['kulineran', 'kuliah'])
-    })
-
-    test('tidak memberi saran untuk kata kunci kurang dari dua huruf', async ({ client }) => {
-        await createDomain({ title: 'Kopi Nusantara' })
-
-        const response = await search(client).get('/api/v1/search-suggestions?q=k')
-
-        response.assertStatus(200)
-        response.assertBodyContains({ data: { items: [] } })
-    })
-
-    test('mengamankan karakter wildcard pada saran pencarian', async ({ client }) => {
-        await createDomain({ title: 'Kopi Nusantara' })
-
-        const response = await search(client).get('/api/v1/search-suggestions?q=%25%25')
-
-        response.assertStatus(200)
-        response.assertBody({ success: true, message: 'Saran pencarian berhasil diambil', data: { items: [] } })
-    })
-
     test('menaruh satu link promosi yang cocok di slot teratas dan tidak mengulangnya di daftar', async ({ client, assert }) => {
         const promotedDomain = await createDomain({ title: 'Kopi Promo', isPromoted: true })
         await createDomains(3, { title: 'Kopi Biasa' })

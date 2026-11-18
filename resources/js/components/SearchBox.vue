@@ -1,11 +1,11 @@
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { AutocompleteInput, AutocompleteRoot, ComboboxContent, ComboboxItem, ComboboxViewport } from 'reka-ui';
-import { ArrowRight, ArrowUpLeft, Search, X } from 'lucide-vue-next';
+import { ArrowRight, History, Search, X } from 'lucide-vue-next';
 import GlassField from '@/components/GlassField.vue';
 import GoldButton from '@/components/GoldButton.vue';
-import http from '@/lib/http';
-import { debounce } from '@/lib/debounce';
+import { getLocalStorage } from '@/lib/pwa';
+import { addToHistory, matchHistory, readHistory, removeFromHistory } from '@/lib/searchHistory';
 
 const props = defineProps({
     size: { type: String, default: 'md', validator: (value) => ['md', 'lg'].includes(value) },
@@ -15,12 +15,12 @@ const props = defineProps({
 const emit = defineEmits(['submit']);
 const query = defineModel('query', { type: String, default: '' });
 
-const MIN_SUGGESTION_LENGTH = 2;
-const SUGGESTION_DELAY_MS = 200;
-
-const suggestions = ref([]);
+// Saran hanya dari riwayat pencarian pengunjung ini sendiri (disimpan di browsernya).
+const storage = getLocalStorage();
+const history = ref(readHistory(storage));
 const isOpenRequested = ref(false);
-let latestRequestId = 0;
+
+const suggestions = computed(() => matchHistory(history.value, query.value));
 
 const isOpen = computed({
     get: () => isOpenRequested.value && suggestions.value.length > 0,
@@ -29,38 +29,6 @@ const isOpen = computed({
     },
 });
 
-const fetchSuggestions = debounce(async (keyword) => {
-    const requestId = ++latestRequestId;
-
-    try {
-        const response = await http.get('/search-suggestions', { params: { q: keyword } });
-
-        // Jawaban yang datang terlambat dari ketikan sebelumnya diabaikan.
-        if (requestId === latestRequestId) {
-            suggestions.value = response.data.data.items;
-        }
-    } catch {
-        // Saran hanya pelengkap; bila gagal, kolom pencarian tetap bisa dipakai tanpa saran.
-        suggestions.value = [];
-    }
-}, SUGGESTION_DELAY_MS);
-
-watch(query, (keyword) => {
-    const trimmedKeyword = keyword.trim();
-
-    if (trimmedKeyword.length < MIN_SUGGESTION_LENGTH) {
-        fetchSuggestions.cancel();
-        latestRequestId++;
-        suggestions.value = [];
-
-        return;
-    }
-
-    fetchSuggestions(trimmedKeyword);
-});
-
-onBeforeUnmount(() => fetchSuggestions.cancel());
-
 function submit(keyword) {
     const trimmedKeyword = keyword.trim();
 
@@ -68,6 +36,7 @@ function submit(keyword) {
         return;
     }
 
+    history.value = addToHistory(storage, trimmedKeyword);
     isOpenRequested.value = false;
     emit('submit', trimmedKeyword);
 }
@@ -77,9 +46,12 @@ function selectSuggestion(suggestion) {
     submit(suggestion);
 }
 
+function forget(entry) {
+    history.value = removeFromHistory(storage, entry);
+}
+
 function clearQuery() {
     query.value = '';
-    suggestions.value = [];
 }
 
 const isLarge = computed(() => props.size === 'lg');
@@ -122,7 +94,7 @@ const isLarge = computed(() => props.size === 'lg');
                 position="inline"
                 class="absolute inset-x-0 top-full z-30 mt-3 overflow-hidden rounded-3xl border border-white/10 bg-ink-900/95 p-2 shadow-glass backdrop-blur-xl data-[state=open]:animate-slide-up"
             >
-                <p class="px-3 pt-1.5 pb-2 text-xs font-medium tracking-widest text-ink-500 uppercase">Saran</p>
+                <p class="px-3 pt-1.5 pb-2 text-xs font-medium tracking-widest text-ink-500 uppercase">Pencarian terakhir</p>
                 <ComboboxViewport>
                     <ComboboxItem
                         v-for="suggestion in suggestions"
@@ -131,9 +103,18 @@ const isLarge = computed(() => props.size === 'lg');
                         class="group/item flex cursor-pointer items-center gap-3 rounded-2xl px-3 py-3 text-base text-ink-200 outline-none transition-colors data-[highlighted]:bg-white/8 data-[highlighted]:text-ink-50"
                         @select.prevent="selectSuggestion(suggestion)"
                     >
-                        <Search class="size-4 shrink-0 text-ink-500 group-data-[highlighted]/item:text-brand-300" aria-hidden="true" />
+                        <History class="size-4 shrink-0 text-ink-500 group-data-[highlighted]/item:text-brand-300" aria-hidden="true" />
                         <span class="line-clamp-2 flex-1">{{ suggestion }}</span>
-                        <ArrowUpLeft class="size-4 shrink-0 text-ink-600 group-data-[highlighted]/item:text-ink-300" aria-hidden="true" />
+                        <button
+                            type="button"
+                            class="grid size-8 shrink-0 cursor-pointer place-items-center rounded-full text-ink-500 transition-colors hover:bg-white/10 hover:text-ink-100"
+                            :aria-label="`Hapus ${suggestion} dari riwayat`"
+                            @pointerdown.stop
+                            @pointerup.stop
+                            @click.stop.prevent="forget(suggestion)"
+                        >
+                            <X class="size-4" aria-hidden="true" />
+                        </button>
                     </ComboboxItem>
                 </ComboboxViewport>
             </ComboboxContent>

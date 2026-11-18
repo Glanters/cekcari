@@ -17,10 +17,6 @@ export const searchResultsValidator = vine.create({
     per_page: vine.number().withoutDecimals().min(1).max(MAX_PER_PAGE).optional(),
 })
 
-export const searchSuggestionsValidator = vine.create({
-    q: vine.string().trim().maxLength(100).optional(),
-})
-
 /**
  * Pesan global (start/validator.ts) dengan nama kolom yang dipahami pengunjung. Dibuat saat dipakai
  * karena pesan global baru terpasang setelah preload selesai.

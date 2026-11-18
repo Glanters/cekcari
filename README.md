@@ -57,6 +57,14 @@ Prasyarat: Node.js 24+, Docker.
 - **Rolling:** halaman pencarian mengirim `seed` acak milik pengunjung (disimpan di `sessionStorage`, berganti tiap 30 menit). Hasil diurutkan `md5(id || seed)`, jadi tiap pengunjung melihat urutan berbeda tetapi halaman 2, 3, dst. tetap konsisten. Tanpa `seed` (pemanggil API langsung) hasil diurutkan menurut kecocokan.
 - **Promosi:** pemilik menyalakan **Promosikan link ini** di halaman detail domain. Bila kata kunci cocok, satu link promosi dipilih acak (mengikuti seed) dan tampil di slot teratas berlabel **Promosi** pada halaman 1; link itu tidak diulang di daftar biasa.
 
+## Riwayat pencarian dan statistik
+
+- **Saran di kolom pencarian** hanya berisi riwayat pencarian pengunjung itu sendiri (maks. 10, disimpan di browsernya, bisa dihapus per entri). Tidak dikirim ke server, jadi pengunjung lain tidak pernah melihatnya.
+- **Statistik** (menu Statistik di panel, rentang hari ini / 7 hari / 30 hari / semua, jam Indonesia):
+  - Superadmin: jumlah pengunjung (per browser), kunjungan (halaman yang dibuka), klik ke situs, dan klik per situs semua member.
+  - Member: klik ke situs miliknya saja.
+- Pengunjung dikenali dari ID acak di browser; server hanya menyimpan hash-nya, tanpa IP atau data pribadi. Kunjungan dan klik dikirim lewat `sendBeacon` ke `POST /api/v1/visits` dan `POST /api/v1/domain-clicks` (domain pencarian, dibatasi laju per IP). Klik beruntun ke situs yang sama dalam 10 detik dihitung sekali. Bot mesin pencari umumnya tidak menjalankan JavaScript sehingga tidak ikut terhitung.
+
 ## SEO (cekcari.com)
 
 Yang sudah ditangani aplikasi:

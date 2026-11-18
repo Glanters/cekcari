@@ -4,12 +4,23 @@ import { ChevronRight } from 'lucide-vue-next';
 import DomainAvatar from '@/components/DomainAvatar.vue';
 import HighlightedText from '@/components/HighlightedText.vue';
 import SiteAddress from '@/components/SiteAddress.vue';
+import { trackDomainClick } from '@/lib/analytics';
 import { stripHighlightMarkers } from '@/lib/highlight';
+import { getLocalStorage } from '@/lib/pwa';
 
 const props = defineProps({
     result: { type: Object, required: true },
     markers: { type: Object, required: true },
+    // Hanya hasil pencarian sungguhan yang dihitung; pratinjau di panel tidak ikut tercatat.
+    isTracked: { type: Boolean, default: false },
+    isPromoted: { type: Boolean, default: false },
 });
+
+function recordClick() {
+    if (props.isTracked) {
+        trackDomainClick(getLocalStorage(), props.result.id, props.isPromoted);
+    }
+}
 
 const plainTitle = computed(() => stripHighlightMarkers(props.result.title, props.markers.start, props.markers.end));
 
@@ -43,6 +54,8 @@ function pathOf(url) {
                 :href="result.url"
                 target="_blank"
                 rel="noopener noreferrer nofollow ugc"
+                @click="recordClick"
+                @auxclick="recordClick"
                 class="decoration-brand-300 decoration-2 underline-offset-4 transition-colors after:absolute after:inset-0 hover:text-brand-700 hover:underline"
             >
                 <HighlightedText :text="result.title" :markers="markers" />
@@ -72,6 +85,8 @@ function pathOf(url) {
                         :href="page.url"
                         target="_blank"
                         rel="noopener noreferrer nofollow ugc"
+                        @click="recordClick"
+                        @auxclick="recordClick"
                         class="flex min-h-11 items-center justify-between gap-3 text-sm font-semibold text-ink-900 decoration-brand-300 underline-offset-4 hover:text-brand-700 active:text-brand-700 sm:block sm:min-h-0 sm:truncate sm:hover:underline"
                     >
                         <span class="truncate">{{ page.title || pathOf(page.url) }}</span>

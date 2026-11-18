@@ -31,6 +31,12 @@ const routes = [
                 meta: { title: 'Kelola domain' },
             },
             {
+                path: 'statistik',
+                name: 'statistics',
+                component: () => import('@/pages/StatisticsPage.vue'),
+                meta: { title: 'Statistik' },
+            },
+            {
                 path: 'pengguna',
                 name: 'users.index',
                 component: () => import('@/pages/UserListPage.vue'),

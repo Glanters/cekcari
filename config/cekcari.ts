@@ -19,6 +19,11 @@ export const seo = {
     isIndexingAllowed: env.get('SEO_ALLOW_INDEXING') ?? true,
 }
 
+// Hari statistik (hari ini, 7 hari, 30 hari) mengikuti jam Indonesia, bukan jam server (UTC).
+export const statistics = {
+    timezone: 'Asia/Jakarta',
+}
+
 export const crawler = {
     maxPages: env.get('CRAWLER_MAX_PAGES') ?? 50,
     userAgent: env.get('CRAWLER_USER_AGENT') ?? 'CekCariBot/1.0',

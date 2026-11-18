@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Globe, LogOut, ShieldCheck, Users } from 'lucide-vue-next';
+import { BarChart3, Globe, LogOut, ShieldCheck, Users } from 'lucide-vue-next';
 import AppLogo from '@/components/AppLogo.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useToast } from '@/composables/useToast';
@@ -15,6 +15,7 @@ const isLoggingOut = ref(false);
 
 const NAV_ITEMS = [
     { label: 'Domain saya', icon: Globe, to: { name: 'domains.index' }, section: 'domains.', isSuperadminOnly: false },
+    { label: 'Statistik', icon: BarChart3, to: { name: 'statistics' }, section: 'statistics', isSuperadminOnly: false },
     { label: 'Pengguna', icon: Users, to: { name: 'users.index' }, section: 'users.', isSuperadminOnly: true },
     { label: 'Keamanan', icon: ShieldCheck, to: { name: 'security' }, section: 'security', isSuperadminOnly: true },
 ];

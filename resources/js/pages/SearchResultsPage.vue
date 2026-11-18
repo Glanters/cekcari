@@ -179,7 +179,7 @@ watch(
                         >
                             Promosi
                         </span>
-                        <ResultCard :result="promoted" :markers="markers" />
+                        <ResultCard :result="promoted" :markers="markers" is-tracked is-promoted />
                     </section>
 
                     <ol class="mt-1 divide-y divide-ink-200/80" aria-label="Hasil pencarian">
@@ -189,7 +189,7 @@ watch(
                             class="motion-safe:animate-rise"
                             :class="{ 'motion-safe:animation-delay-1': index === 1, 'motion-safe:animation-delay-2': index >= 2 }"
                         >
-                            <ResultCard :result="result" :markers="markers" />
+                            <ResultCard :result="result" :markers="markers" is-tracked />
                         </li>
                     </ol>
 

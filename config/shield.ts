@@ -23,7 +23,8 @@ const shieldConfig = defineConfig({
     // SPA mengirim token dari cookie XSRF-TOKEN lewat header X-XSRF-TOKEN (axios melakukannya otomatis).
     csrf: {
         enabled: true,
-        exceptRoutes: [],
+        // Pencatat kunjungan/klik dikirim lewat sendBeacon (tanpa header CSRF) dan tidak memakai sesi siapa pun.
+        exceptRoutes: ['/api/v1/visits', '/api/v1/domain-clicks'],
         enableXsrfCookie: true,
         methods: ['POST', 'PUT', 'PATCH', 'DELETE'],
     },

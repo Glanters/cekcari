@@ -1,7 +1,6 @@
 import db from '@adonisjs/lucid/services/db'
 import type { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
 import Domain from '#models/domain'
-import { startsWithPattern } from '#support/like_pattern'
 
 // Penanda sorotan sengaja bukan tag HTML agar frontend tidak perlu merender HTML mentah.
 export const HIGHLIGHT_START = '⟦'
@@ -10,7 +9,6 @@ export const HIGHLIGHT_END = '⟧'
 const TS_QUERY = "websearch_to_tsquery('simple', ?)"
 const FUZZY_THRESHOLD = 0.4
 const MAX_RELATED_PAGES = 3
-const SUGGESTION_LIMIT = 6
 const HEADLINE_OPTIONS = `StartSel=${HIGHLIGHT_START}, StopSel=${HIGHLIGHT_END}`
 
 type DomainQuery = ModelQueryBuilderContract<typeof Domain, Domain>
@@ -74,57 +72,6 @@ export default class SearchService {
                 last_page: paginator.lastPage,
             },
         }
-    }
-
-    async suggest(keyword: string, limit = SUGGESTION_LIMIT): Promise<string[]> {
-        const prefixPattern = startsWithPattern(keyword)
-
-        const domainTitles = await db
-            .from('domains')
-            .whereNull('deleted_at')
-            .where((query) => {
-                query.whereILike('title', prefixPattern).orWhereRaw('word_similarity(?, title) > ?', [keyword, FUZZY_THRESHOLD])
-            })
-            .orderByRaw('word_similarity(?, title) DESC', [keyword])
-            .limit(limit)
-            .select('title')
-
-        const tagNames = await db
-            .from('tags')
-            .whereExists((query) => {
-                query
-                    .select(db.raw('1'))
-                    .from('domain_tag')
-                    .join('domains', 'domains.id', 'domain_tag.domain_id')
-                    .whereColumn('domain_tag.tag_id', 'tags.id')
-                    .whereNull('domains.deleted_at')
-            })
-            .where((query) => {
-                query.whereILike('name', prefixPattern).orWhereRaw('word_similarity(?, name) > ?', [keyword, FUZZY_THRESHOLD])
-            })
-            .orderByRaw('word_similarity(?, name) DESC', [keyword])
-            .limit(limit)
-            .select('name')
-
-        const candidates: string[] = [
-            ...domainTitles.map((row: { title: string }) => row.title),
-            ...tagNames.map((row: { name: string }) => row.name),
-        ]
-        const seen = new Set<string>()
-
-        return candidates
-            .filter((suggestion) => {
-                const normalized = suggestion.toLowerCase()
-
-                if (seen.has(normalized)) {
-                    return false
-                }
-
-                seen.add(normalized)
-
-                return true
-            })
-            .slice(0, limit)
     }
 
     /**

@@ -23,6 +23,8 @@ export const PERMISSIONS = {
     // Situs milik semua member: melihat, dan menambah/mengubah/menghapus.
     viewAllDomains: 'domains.view_all',
     manageAllDomains: 'domains.manage_all',
+    // Jumlah pengunjung situs dan klik semua situs (member hanya melihat klik situs miliknya).
+    viewAllStatistics: 'statistics.view_all',
 } as const
 
 export type PermissionName = (typeof PERMISSIONS)[keyof typeof PERMISSIONS]
