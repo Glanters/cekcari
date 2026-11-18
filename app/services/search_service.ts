@@ -2,6 +2,7 @@ import db from '@adonisjs/lucid/services/db'
 import type { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
 import Domain from '#models/domain'
 import SpellingCorrector from '#services/spelling_corrector'
+import { variantDescription, variantTitle } from '#support/result_text_variants'
 
 // Penanda sorotan sengaja bukan tag HTML agar frontend tidak perlu merender HTML mentah.
 export const HIGHLIGHT_START = '⟦'
@@ -38,6 +39,10 @@ export type SearchOutcome = {
 }
 
 type HeadlineRow = { id: number; title_highlight: string; description_highlight: string }
+
+type DuplicateRankRow = { id: number; title_rank: number; description_rank: number }
+
+type DisplayText = { id: number; title: string; description: string }
 
 type RelatedPageRow = { domain_id: number; url: string; title: string | null; snippet: string }
 
@@ -235,20 +240,26 @@ export default class SearchService {
 
         const domainIds = domains.map((domain) => domain.id)
         const fullTextOptions = `${HEADLINE_OPTIONS}, HighlightAll=true`
+        const displayTexts = await this.displayTexts(domains)
 
+        // Sorotan dibuat dari teks yang benar-benar ditampilkan (asli atau variasi mirror).
         // Deskripsi dikirim utuh (dipotong rapi di tampilan), karena potongan ts_headline
         // bisa mulai di tengah kalimat.
-        const headlineRows: HeadlineRow[] = await db
-            .from('domains')
-            .whereIn('id', domainIds)
-            .select(
-                'id',
-                db.raw(
-                    `ts_headline('simple', title, ${TS_QUERY}, ?) AS title_highlight,` +
-                        ` ts_headline('simple', description, ${TS_QUERY}, ?) AS description_highlight`,
-                    [keyword, fullTextOptions, keyword, fullTextOptions]
-                )
-            )
+        const headlineResult = await db.rawQuery<{ rows: HeadlineRow[] }>(
+            `SELECT id,` +
+                ` ts_headline('simple', title, ${TS_QUERY}, ?) AS title_highlight,` +
+                ` ts_headline('simple', description, ${TS_QUERY}, ?) AS description_highlight` +
+                ` FROM (VALUES ${displayTexts.map(() => '(?::bigint, ?::text, ?::text)').join(', ')})` +
+                ' AS texts (id, title, description)',
+            [
+                keyword,
+                fullTextOptions,
+                keyword,
+                fullTextOptions,
+                ...displayTexts.flatMap((text) => [text.id, text.title, text.description]),
+            ]
+        )
+        const headlineRows = headlineResult.rows
         // Driver pg mengembalikan kolom bigint sebagai string, jadi kunci peta diseragamkan ke number.
         const headlines = new Map(headlineRows.map((row) => [Number(row.id), row]))
 
@@ -291,14 +302,83 @@ export default class SearchService {
             ])
         }
 
-        return domains.map((domain) => {
+        return domains.map((domain, index) => {
             const headline = headlines.get(Number(domain.id))
 
             return {
                 domain,
-                titleHighlight: headline?.title_highlight ?? domain.title,
-                descriptionHighlight: headline?.description_highlight ?? domain.description,
+                titleHighlight: headline?.title_highlight ?? displayTexts[index].title,
+                descriptionHighlight:
+                    headline?.description_highlight ?? displayTexts[index].description,
                 relatedPages: relatedPages.get(Number(domain.id)) ?? [],
+            }
+        })
+    }
+
+    /**
+     * Judul & deskripsi yang ditampilkan. Situs yang judul (atau deskripsinya) sama persis dengan
+     * situs aktif lain yang lebih dulu terdaftar mendapat variasi berurutan (lihat result_text_variants),
+     * supaya situs mirror tidak tampil berulang dengan teks yang sama. Data di database tidak diubah.
+     */
+    private async displayTexts(domains: Domain[]): Promise<DisplayText[]> {
+        const normalize = (text: string) => text.trim().toLowerCase()
+        const titles = [...new Set(domains.map((domain) => normalize(domain.title)))]
+        const descriptions = [
+            ...new Set(domains.map((domain) => normalize(domain.description ?? ''))),
+        ].filter((description) => description.length > 0)
+        const placeholders = (values: string[]) => values.map(() => '?').join(', ')
+
+        // Setiap situs dengan judul/deskripsi yang sama pasti ikut terambil oleh filter ini,
+        // jadi urutan di dalam kelompoknya (row_number) lengkap.
+        const sameTextDomains = Domain.query()
+            .withScopes((scopes) => scopes.active())
+            .where((query) => {
+                query.whereRaw(`lower(btrim(domains.title)) IN (${placeholders(titles)})`, titles)
+
+                if (descriptions.length > 0) {
+                    query.orWhereRaw(
+                        `lower(btrim(domains.description)) IN (${placeholders(descriptions)})`,
+                        descriptions
+                    )
+                }
+            })
+            .select(
+                'domains.id',
+                db.raw(
+                    'row_number() OVER (PARTITION BY lower(btrim(domains.title)) ORDER BY domains.id) - 1 AS title_rank'
+                ),
+                db.raw(
+                    'row_number() OVER (PARTITION BY lower(btrim(domains.description)) ORDER BY domains.id) - 1 AS description_rank'
+                )
+            )
+
+        const rankRows: DuplicateRankRow[] = await db
+            .query()
+            .from(sameTextDomains.as('same_text_domains'))
+            .whereIn(
+                'id',
+                domains.map((domain) => domain.id)
+            )
+            .select('id', 'title_rank', 'description_rank')
+        const ranks = new Map(rankRows.map((row) => [Number(row.id), row]))
+
+        return domains.map((domain) => {
+            const rank = ranks.get(Number(domain.id))
+            const source = {
+                url: domain.url,
+                title: domain.title,
+                description: domain.description ?? '',
+            }
+            const titleRank = Number(rank?.title_rank ?? 0)
+            const descriptionRank = Number(rank?.description_rank ?? 0)
+
+            return {
+                id: Number(domain.id),
+                title: titleRank > 0 ? variantTitle(source, titleRank) : domain.title,
+                description:
+                    descriptionRank > 0 && source.description.trim().length > 0
+                        ? variantDescription(source, descriptionRank)
+                        : domain.description,
             }
         })
     }

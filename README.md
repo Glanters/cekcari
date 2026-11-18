@@ -55,6 +55,7 @@ Prasyarat: Node.js 24+, Docker.
 ## Urutan hasil dan promosi
 
 - **Rolling:** halaman pencarian mengirim `seed` acak milik pengunjung (disimpan di `sessionStorage`, berganti tiap 30 menit). Hasil diurutkan `md5(id || seed)`, jadi tiap pengunjung melihat urutan berbeda tetapi halaman 2, 3, dst. tetap konsisten. Tanpa `seed` (pemanggil API langsung) hasil diurutkan menurut kecocokan.
+- **Situs mirror:** bila beberapa link punya judul atau deskripsi yang persis sama (mis. depobos90.com, depobos45.com, depobos19.com), link yang paling dulu terdaftar tampil dengan teks aslinya, sedangkan link berikutnya tampil dengan variasi otomatis yang memuat nama merek dan alamat link itu (mis. "DEPOBOS — Link Alternatif depobos45.com") ditambah satu kalimat dari deskripsi aslinya. Variasi hanya untuk tampilan hasil pencarian; data di database dan panel tidak berubah. Templatnya di `app/support/result_text_variants.ts`.
 - **Promosi:** pemilik menyalakan **Promosikan link ini** di halaman detail domain. Bila kata kunci cocok, satu link promosi dipilih acak (mengikuti seed) dan tampil di slot teratas berlabel **Promosi** pada halaman 1; link itu tidak diulang di daftar biasa.
 
 ## Riwayat pencarian dan statistik

@@ -168,6 +168,40 @@ test.group('API pencarian', (group) => {
         assert.notDeepEqual(await orderFor(222), firstVisitor)
     })
 
+    test('situs mirror dengan judul dan deskripsi sama tampil dengan teks berbeda', async ({
+        client,
+        assert,
+    }) => {
+        const mirror = {
+            title: 'DEPOBOS LINK GAME ONLINE TERPERCAYA',
+            description: 'DEPOBOS adalah bandar online terlengkap. Satu nama terus mencuat.',
+        }
+        const original = await createDomain({ ...mirror, host: 'depobos90.com', url: 'https://depobos90.com' })
+        await createDomain({ ...mirror, host: 'depobos45.com', url: 'https://depobos45.com' })
+        await createDomain({ ...mirror, host: 'depobos19.com', url: 'https://depobos19.com' })
+        await createDomain({ title: 'Kopi Depobos', host: 'kopi.id', url: 'https://kopi.id' })
+
+        const response = await search(client).get('/api/v1/search-results?q=depobos')
+        response.assertStatus(200)
+
+        const plain = (text: string) => text.replaceAll(HIGHLIGHT_START, '').replaceAll(HIGHLIGHT_END, '')
+        const items = response.body().data.items as (ResultItem & { title: string })[]
+        const byHost = new Map(items.map((item) => [item.host, item]))
+
+        assert.equal(plain(byHost.get('depobos90.com')!.title), mirror.title)
+        assert.equal(plain(byHost.get('depobos90.com')!.description), mirror.description)
+        assert.equal(plain(byHost.get('depobos45.com')!.title), 'DEPOBOS — Link Alternatif depobos45.com')
+        assert.equal(plain(byHost.get('depobos19.com')!.title), 'depobos19.com | DEPOBOS')
+        assert.include(plain(byHost.get('depobos45.com')!.description), 'depobos45.com')
+        assert.equal(plain(byHost.get('kopi.id')!.title), 'Kopi Depobos')
+        assert.lengthOf(new Set(items.map((item) => plain(item.title))), 4)
+        assert.lengthOf(new Set(items.map((item) => plain(item.description))), 4)
+        // Kata kunci tetap disorot di teks variasi; data asli di database tidak berubah.
+        assert.include(byHost.get('depobos45.com')!.title, `${HIGHLIGHT_START}DEPOBOS${HIGHLIGHT_END}`)
+        await original.refresh()
+        assert.equal(original.title, mirror.title)
+    })
+
     test('mengirim penanda sorotan dan bentuk pagination standar', async ({ client }) => {
         await createDomain({ title: 'Kopi Nusantara' })
 
