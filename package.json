@@ -30,6 +30,7 @@
         "#start/*": "./start/*.js",
         "#config/*": "./config/*.js",
         "#presenters/*": "./app/presenters/*.js",
+        "#commands/*": "./commands/*.js",
         "#generated/*": "./.adonisjs/server/*.js"
     },
     "devDependencies": {

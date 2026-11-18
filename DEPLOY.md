@@ -63,6 +63,18 @@ Bila domain memang harus selalu lewat Cloudflare, bisa juga memakai Origin Certi
 buat di SSL/TLS → Origin Server untuk kedua hostname, simpan ke `/etc/ssl/cloudflare/cekcari.pem` dan
 `/etc/ssl/cloudflare/cekcari.key`, lalu `sudo bash deploy/setup-domain.sh --cloudflare`.
 
+## Akun uji (dummy)
+
+Satu superadmin dan 5 member yang langsung aktif, semuanya memakai password dummy dari `.env`:
+
+```bash
+cd /opt/cekcari/build && ENV_PATH=../ node ace user:create-dummies
+```
+
+Email: `superadmin@dummy.test`, `member1@dummy.test` … `member5@dummy.test`. Jumlah member bisa diubah
+(`--members=10`), dan semuanya dihapus lagi dengan `--remove` (situs milik akun dummy ikut terhapus).
+Perintah ini menolak berjalan bila server memakai Account Center asli.
+
 ## Cek & log
 
 ```bash
