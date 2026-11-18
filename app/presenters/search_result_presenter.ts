@@ -13,7 +13,7 @@ export function presentSearchHit(hit: SearchHit) {
         title: hit.titleHighlight,
         description: hit.descriptionHighlight,
         logo_url: domain.logoUrl,
-        tags: domain.tags.map((tag) => tag.name),
+        tags: hit.tags,
         related_pages: hit.relatedPages,
     }
 }

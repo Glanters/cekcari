@@ -1,27 +1,33 @@
 import { test } from '@japa/runner'
-import { brandOf, variantDescription, variantTitle } from '#support/result_text_variants'
+import {
+    brandOf,
+    variantDescription,
+    variantTags,
+    variantTitle,
+} from '#support/result_text_variants'
 
-const DEPOBOS = {
-    url: 'https://depobos45.com',
+const TAGS = ['login depobos', 'daftar depobos', 'situs official depobos']
+
+const mirror = (host: string) => ({
+    url: `https://${host}`,
     title: 'DEPOBOS LINK GAME ONLINE TERPERCAYA',
     description:
         'DEPOBOS adalah Bandar Togel, Live Casino, Slot & Bola Online Terlengkap. Dalam dunia judi online yang penuh persaingan, satu nama terus mencuat.',
-}
+    tags: TAGS,
+})
+
+const VARIANTS = Array.from({ length: 20 }, (_, index) => index + 1)
 
 test.group('Variasi teks hasil untuk situs mirror', () => {
     test('nama merek diambil dari kata judul yang juga ada di alamat: {expected}')
         .with([
-            { source: DEPOBOS, expected: 'DEPOBOS' },
+            { source: mirror('depobos45.com'), expected: 'DEPOBOS' },
             {
-                source: {
-                    url: 'https://dkwl.b-cdn.net/indrabet-kl1',
-                    title: 'indrabet-kl1',
-                    description: '',
-                },
+                source: { url: 'https://dkwl.b-cdn.net/indrabet-kl1', title: 'indrabet-kl1' },
                 expected: 'indrabet',
             },
             {
-                source: { url: 'https://www.kopi99.id', title: 'Selamat datang', description: '' },
+                source: { url: 'https://www.kopi99.id', title: 'Selamat datang' },
                 expected: 'Kopi',
             },
         ])
@@ -29,26 +35,45 @@ test.group('Variasi teks hasil untuk situs mirror', () => {
             assert.equal(brandOf(source), expected)
         })
 
-    test('setiap urutan variasi menghasilkan judul berbeda yang memuat alamat link', ({
-        assert,
-    }) => {
-        const titles = [1, 2, 3, 4, 5].map((variant) => variantTitle(DEPOBOS, variant))
+    test('20 mirror pertama mendapat 20 pola judul berbeda yang memuat alamatnya', ({ assert }) => {
+        // Alamat disamakan agar yang dibandingkan benar-benar polanya.
+        const titles = VARIANTS.map((variant) => variantTitle(mirror('depobos45.com'), variant))
 
-        assert.lengthOf(new Set(titles), 5)
+        assert.lengthOf(new Set(titles), VARIANTS.length)
         titles.forEach((title) => assert.include(title, 'depobos45.com'))
         assert.equal(titles[0], 'DEPOBOS — Link Alternatif depobos45.com')
+        // Pola dari tag situs: "login depobos" ditulis dengan nama merek seperti di judul.
+        assert.include(titles, 'Login DEPOBOS di depobos45.com')
     })
 
-    test('deskripsi variasi memuat alamat dan satu kalimat deskripsi asli secara bergiliran', ({
-        assert,
-    }) => {
+    test('20 mirror pertama mendapat 20 susunan deskripsi berbeda', ({ assert }) => {
+        const descriptions = VARIANTS.map((variant) =>
+            variantDescription(mirror('depobos45.com'), variant)
+        )
+
+        assert.lengthOf(new Set(descriptions), VARIANTS.length)
+        descriptions.forEach((description) => assert.include(description, 'depobos45.com'))
+    })
+
+    test('deskripsi hanya dirangkai dari alamat, kalimat asli, dan tag situs', ({ assert }) => {
         assert.equal(
-            variantDescription(DEPOBOS, 1),
-            'Link alternatif DEPOBOS di depobos45.com. DEPOBOS adalah Bandar Togel, Live Casino, Slot & Bola Online Terlengkap.'
+            variantDescription(mirror('depobos45.com'), 1),
+            'Dalam dunia judi online yang penuh persaingan, satu nama terus mencuat. Link alternatif DEPOBOS di depobos45.com.'
         )
         assert.equal(
-            variantDescription(DEPOBOS, 2),
-            'depobos45.com adalah salah satu alamat DEPOBOS. Dalam dunia judi online yang penuh persaingan, satu nama terus mencuat.'
+            variantDescription({ ...mirror('depobos45.com'), tags: [] }, 4),
+            'Alamat DEPOBOS lainnya: depobos45.com. DEPOBOS adalah Bandar Togel, Live Casino, Slot & Bola Online Terlengkap.'
         )
+    })
+
+    test('urutan tag digeser dan tidak pernah sama dengan urutan asli', ({ assert }) => {
+        for (const variant of VARIANTS) {
+            const tags = variantTags(TAGS, variant)
+
+            assert.sameMembers(tags, TAGS)
+            assert.notDeepEqual(tags, TAGS)
+        }
+
+        assert.deepEqual(variantTags(['satu'], 3), ['satu'])
     })
 })
