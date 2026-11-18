@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="id">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{{ page.title }}</title>
+        <meta name="description" content="{{ page.description }}">
+        <meta name="robots" content="{{ page.robots }}">
+        @if(page.canonical)
+            <link rel="canonical" href="{{ page.canonical }}">
+        @end
+        @if(site.googleSiteVerification)
+            <meta name="google-site-verification" content="{{ site.googleSiteVerification }}">
+        @end
+
+        <meta property="og:type" content="website">
+        <meta property="og:site_name" content="{{ site.name }}">
+        <meta property="og:locale" content="id_ID">
+        <meta property="og:title" content="{{ page.title }}">
+        <meta property="og:description" content="{{ page.description }}">
+        <meta property="og:image" content="{{ site.imageUrl }}">
+        @if(page.canonical)
+            <meta property="og:url" content="{{ page.canonical }}">
+        @end
+        <meta name="twitter:card" content="summary">
+
+        @if(page.structuredData)
+            {{-- JSON sudah di-escape (<, >, &) di controller, jadi aman ditulis mentah di dalam tag script. --}}
+            <script type="application/ld+json" nonce="{{ cspNonce }}">{{{ page.structuredData }}}</script>
+        @end
+
+        <link rel="icon" href="/favicon.ico" sizes="48x48">
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        <meta name="theme-color" content="#0c0a09">
+        @if(isInstallable)
+            <link rel="manifest" href="/manifest.webmanifest">
+            {{-- Safari iOS belum membaca semua isi manifest, jadi nama & gaya status bar ditegaskan lewat meta. --}}
+            <meta name="mobile-web-app-capable" content="yes">
+            <meta name="apple-mobile-web-app-capable" content="yes">
+            <meta name="apple-mobile-web-app-title" content="{{ site.name }}">
+            <meta name="apple-mobile-web-app-status-bar-style" content="black">
+        @end
+        @include('partials/fonts')
+        @vite(['resources/css/app.css', entry])
+    </head>
+    <body class="min-h-screen bg-canvas font-sans text-ink-900 antialiased">
+        <div id="app"></div>
+        <noscript>
+            <p>{{ site.name }} membutuhkan JavaScript. Aktifkan JavaScript di browser Anda untuk mulai mencari.</p>
+        </noscript>
+    </body>
+</html>

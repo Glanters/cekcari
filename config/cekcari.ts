@@ -13,7 +13,7 @@ export const seo = {
     searchUrl: env.get('SEARCH_URL').replace(/\/+$/, ''),
     defaultTitle: 'CekCari — Mesin Pencari Situs dan Halaman Web Indonesia',
     defaultDescription:
-        'Cari situs dan halaman web Indonesia dengan cepat di CekCari. Temukan situs berdasarkan nama, topik, atau isi halamannya.',
+        'Cari situs dan halaman web Indonesia dengan cepat di CekCari. Ketik kata kunci, temukan situs yang relevan beserta halaman-halaman di dalamnya.',
     imagePath: '/images/brand/cekcari-logo-512.png',
     googleSiteVerification: env.get('GOOGLE_SITE_VERIFICATION') ?? '',
 }

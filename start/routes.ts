@@ -8,6 +8,13 @@ import '#start/routes/panel_admin'
 import '#start/routes/pages'
 
 import router from '@adonisjs/core/services/router'
+import { domains } from '#config/cekcari'
 
-// Cek kesehatan untuk load balancer/monitor.
-router.get('/up', ({ response }) => response.ok({ status: 'ok' }))
+// Cek kesehatan untuk load balancer/monitor. Didaftarkan per domain karena rute yang terikat domain
+// tidak pernah jatuh ke rute tanpa domain.
+for (const host of [domains.search, domains.panel]) {
+    router
+        .get('/up', ({ response }) => response.ok({ status: 'ok' }))
+        .domain(host)
+        .as(`health.${host}`)
+}

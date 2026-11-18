@@ -33,7 +33,8 @@ export const http = defineConfig({
     },
     allowMethodSpoofing: false,
     useAsyncLocalStorage: false,
-    router: { matcher: 'tree' },
+    // Rute spesifik (mis. /api/v1/...) selalu menang atas catch-all SPA, apa pun urutan berkas rute dimuat.
+    router: { matcher: 'tree', precedence: 'specificity' },
     redirect: { forwardQueryString: false },
     cookie: {
         domain: '',

@@ -11,7 +11,7 @@ const CACHE_VERSION = 'v1';
 const PAGE_CACHE = `cekcari-pages-${CACHE_VERSION}`;
 const ASSET_CACHE = `cekcari-assets-${CACHE_VERSION}`;
 const OFFLINE_FALLBACK_URL = '/';
-const BUILD_MANIFEST_URL = '/build/manifest.json';
+const BUILD_MANIFEST_URL = '/build/.vite/manifest.json';
 const APP_ENTRIES = ['resources/js/search.js', 'resources/css/app.css'];
 
 const PRECACHE_URLS = [
@@ -41,11 +41,6 @@ function collectBuildFiles(manifest) {
         [...(chunk.css ?? []), ...(chunk.assets ?? [])].forEach((file) => files.add(`/build/${file}`));
         queue.push(...(chunk.imports ?? []), ...(chunk.dynamicImports ?? []));
     }
-
-    // Font dari direktif @fonts tidak terhubung ke entri; cukup format woff2 yang didukung semua browser modern.
-    Object.values(manifest)
-        .filter((chunk) => chunk.file.endsWith('.woff2'))
-        .forEach((chunk) => files.add(`/build/${chunk.file}`));
 
     return files;
 }

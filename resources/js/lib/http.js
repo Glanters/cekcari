@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// Satu instance untuk seluruh panggilan API agar cookie sesi & CSRF Sanctum selalu ikut terkirim.
+// Satu instance untuk seluruh panggilan API agar cookie sesi & token CSRF selalu ikut terkirim.
 const http = axios.create({
     baseURL: '/api/v1',
     withCredentials: true,
@@ -39,8 +39,9 @@ http.interceptors.response.use(
     },
 );
 
+// Server menyetel cookie XSRF-TOKEN di setiap jawaban; endpoint ini dipanggil sebelum login agar cookie-nya sudah ada.
 export async function ensureCsrfCookie() {
-    await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+    await http.get('/csrf-token');
 }
 
 export default http;

@@ -5,19 +5,24 @@ Mesin pencari situs dengan dua panel yang dilayani di **dua domain terpisah** (`
 - **Pencarian publik** — domain pencarian (`/`, `/cari`). Pengunjung mencari situs; data diambil dari PostgreSQL (data situs + isi halaman hasil crawl), lengkap dengan saran pencarian, sorotan kata kunci, dan toleransi salah ketik. Tidak ada tautan atau API login di domain ini.
 - **Panel pemilik domain** — domain panel (`/masuk`, `/dasbor/domain`). Pemilik masuk lewat **Account Center** lalu **hanya mengisi link situs**; judul, deskripsi, tag, dan logo diambil otomatis dari situs, dan crawler mengindeks halaman-halamannya.
 
-Tiap domain punya bundel Vue sendiri (`resources/js/search.js` dan `resources/js/panel.js`) dan rute API sendiri; rute domain lain menjawab 404. Di lokal: pencarian di `http://localhost:8000`, panel di `http://panel.localhost:8000`.
+Tiap domain punya bundel Vue sendiri (`resources/js/search.js` dan `resources/js/panel.js`) dan rute API sendiri; rute domain lain menjawab 404. Di lokal: pencarian di `http://localhost:3333`, panel di `http://panel.localhost:3333`.
 
 Standar pengembangan: [03-standar-untuk-ai.md](03-standar-untuk-ai.md).
 
 ## Teknologi
 
-Laravel 13 (Sanctum, Pest) · Vue 3 + Vue Router + Pinia + Reka UI + VeeValidate + TanStack Table + Lucide + Day.js · Tailwind CSS 4 · Vite · PostgreSQL 17 (full-text search + `pg_trgm`) · Redis (cache, sesi, rate limit; klien `predis`) · MinIO (dev) / DigitalOcean Spaces (production) untuk logo.
+AdonisJS 7 (Lucid, auth + session, Shield, Limiter, VineJS, Japa) · Vue 3 + Vue Router + Pinia + Reka UI + VeeValidate + TanStack Table + Lucide + Day.js · Tailwind CSS 4 · Vite · PostgreSQL 17 (full-text search + `pg_trgm`) · Redis (sesi, rate limit) · MinIO (dev) / DigitalOcean Spaces (production) untuk logo.
 
 ## Menjalankan di lokal
 
-Prasyarat: PHP 8.3 (ekstensi `pdo_pgsql`, `dom`, `curl`), Composer, Node.js 22+, Docker.
+Prasyarat: Node.js 24+, Docker.
 
-1. Salin `.env.example` menjadi `.env`, isi `DB_PASSWORD`, `REDIS_PASSWORD`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, lalu `php artisan key:generate`.
+1. Salin `.env.example` menjadi `.env`, isi `DB_PASSWORD`, `REDIS_PASSWORD`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, lalu buat kunci aplikasi:
+
+    ```
+    node ace generate:key
+    ```
+
 2. Nyalakan PostgreSQL, Redis, dan MinIO (bucket + akses baca publik `logos/` dibuat otomatis):
 
     ```
@@ -27,20 +32,18 @@ Prasyarat: PHP 8.3 (ekstensi `pdo_pgsql`, `dom`, `curl`), Composer, Node.js 22+,
 3. Pasang dependensi dan siapkan database:
 
     ```
-    composer install
     npm install
-    php artisan migrate
+    node ace migration:run
     ```
 
-4. Jalankan aplikasi (tiga proses):
+4. Jalankan aplikasi (dua proses):
 
     ```
-    php artisan serve
-    php artisan queue:work database
-    npm run dev
+    node ace serve --hmr
+    node ace queue:work
     ```
 
-5. Jadwal crawl ulang mingguan: `php artisan schedule:work` (production: cron `schedule:run` tiap menit).
+    Worker antrean (PostgreSQL) menjalankan crawl, dan sekaligus menjadwalkan crawl ulang mingguan untuk domain yang datanya sudah lebih dari 7 hari.
 
 ## Alur pemilik domain
 
@@ -58,13 +61,13 @@ Prasyarat: PHP 8.3 (ekstensi `pdo_pgsql`, `dom`, `curl`), Composer, Node.js 22+,
 
 Yang sudah ditangani aplikasi:
 
-- Judul, meta description, canonical, Open Graph, dan data terstruktur `WebSite`/`Organization` dirender di server (`SpaPageController`, `resources/views/app.blade.php`), jadi terbaca mesin pencari tanpa menjalankan JavaScript. Teks dasarnya di `config/seo.php`.
+- Judul, meta description, canonical, Open Graph, dan data terstruktur `WebSite`/`Organization` dirender di server (`resources/views/app.edge`), jadi terbaca mesin pencari tanpa menjalankan JavaScript. Teks dasarnya di `config/cekcari.ts` (bagian `seo`).
 - Beranda diindeks; halaman hasil pencarian (`/cari?q=…`) diberi `noindex, follow` sesuai anjuran Google untuk hasil pencarian internal; alamat yang tidak ada menjawab **404** sungguhan.
 - `robots.txt` dan `sitemap.xml` dibuat per domain. Domain panel seluruhnya `Disallow: /` plus header `X-Robots-Tag: noindex, nofollow`.
 
 Saat go-live di cekcari.com:
 
-1. Isi `.env`: `SEARCH_DOMAIN=cekcari.com`, `SEARCH_URL=https://cekcari.com`, dan domain panel (`PANEL_DOMAIN`, `SANCTUM_STATEFUL_DOMAINS`).
+1. Isi `.env`: `SEARCH_DOMAIN=cekcari.com`, `SEARCH_URL=https://cekcari.com`, dan domain panel (`PANEL_DOMAIN`).
 2. Pasang HTTPS, lalu arahkan `www.cekcari.com` dan `http://` ke `https://cekcari.com` dengan redirect 301 di web server, supaya Google hanya melihat satu alamat.
 3. Daftarkan `https://cekcari.com` di [Google Search Console](https://search.google.com/search-console), salin kode verifikasi ke `GOOGLE_SITE_VERIFICATION`, lalu kirim `https://cekcari.com/sitemap.xml`.
 4. Jangan daftarkan domain panel di Search Console.
@@ -91,11 +94,11 @@ Catatan:
 
 Tidak ada pendaftaran atau kata sandi lokal. Alurnya:
 
-1. Pengguna mengisi email + kata sandi **Account Center** di `/masuk`. CekCari meneruskannya ke Account Center (protokol AES-256-CBC + tanda tangan, sama dengan dash CRM; dijaga test vektor di `tests/Feature/AccountCenterTest.php`). Jawaban yang tidak dikenali selalu ditolak.
+1. Pengguna mengisi email + kata sandi **Account Center** di `/masuk`. CekCari meneruskannya ke Account Center (protokol AES-256-CBC + tanda tangan, sama dengan dash CRM; dijaga test vektor dari `tests/fixtures/accountCenterPhpVectors.json`). Jawaban yang tidak dikenali selalu ditolak.
 2. Login pertama membuat akun lokal berperan **member** dengan status **belum aktif**. Pengguna belum bisa masuk sampai **superadmin** mengaktifkannya di menu **Pengguna**.
 3. Bila 2FA diwajibkan, pengguna memasukkan kode Google Authenticator/Authy. Yang belum pernah memasang 2FA diminta memindai QR dulu, lalu mendapat 8 recovery code (sekali pakai, disimpan dalam bentuk hash).
 
-Peran memakai Spatie Laravel Permission: `superadmin` dan `member`. Superadmin bisa:
+Peran disimpan di tabel roles/permissions (seperti lacak-hp dan revenue): `superadmin` dan `member`. Superadmin bisa:
 
 - mengaktifkan/menonaktifkan akun (akun yang dinonaktifkan langsung keluar dari sesi yang sedang berjalan),
 - menjadikan akun lain superadmin atau member (tidak bisa mengubah atau menonaktifkan dirinya sendiri),
@@ -135,24 +138,23 @@ Lokal saat ini memakai driver `dummy`: masuk dengan `pemilik.uji@example.com` (s
 ## Pengujian
 
 ```
-php artisan test
-npm test
+node ace test
+npm run test:frontend
 ```
 
-Test backend memakai database `search_engine_test` (dibuat otomatis oleh container PostgreSQL) dan memblokir permintaan HTTP sungguhan.
+Test backend (Japa) memakai database `cekcari_test` dan pengaturan dari `.env.test` (salin dari `.env`, lalu ubah `NODE_ENV=test`, `DB_DATABASE=cekcari_test`, `SESSION_DRIVER=memory`, `LIMITER_STORE=memory`, `CRAWLER_DELAY_MS=0`). Tidak ada permintaan HTTP sungguhan ke situs luar.
 
 ## Production
 
-Domain: isi `SEARCH_DOMAIN` dan `PANEL_DOMAIN` dengan nama host sebenarnya (tanpa `https://`), arahkan keduanya ke server yang sama, dan isi `SANCTUM_STATEFUL_DOMAINS` dengan domain panel.
+Domain: isi `SEARCH_DOMAIN` dan `PANEL_DOMAIN` dengan nama host sebenarnya (tanpa `https://`), arahkan keduanya ke server yang sama. Build: `node ace build`, lalu jalankan `node build/bin/server.js` dan `node build/ace.js queue:work` (mis. lewat PM2).
 
 Logo (DigitalOcean Spaces): ganti nilai `AWS_*` di `.env`: `AWS_ENDPOINT=https://<region>.digitaloceanspaces.com`, `AWS_URL=https://<bucket>.<region>.digitaloceanspaces.com`, `AWS_DEFAULT_REGION=<region>`, `AWS_USE_PATH_STYLE_ENDPOINT=false`.
 
-Login: `APP_ENV=production`, `TRUSTED_PROXIES` sesuai proxy di depan aplikasi, `ACCOUNTCENTER_DRIVER=http`, isi `ACCOUNTCENTER_URI`/`_NAME`/`_SECRET` dan `ACCOUNTCENTER_SUPERADMIN_EMAILS`, kosongkan `ACCOUNTCENTER_DUMMY_PASSWORD`. Setelah masa uji, nyalakan 2FA di menu **Keamanan**.
+Login: `NODE_ENV=production`, `TRUSTED_PROXIES` sesuai proxy di depan aplikasi, `ACCOUNTCENTER_DRIVER=http`, isi `ACCOUNTCENTER_URI`/`_NAME`/`_SECRET` dan `ACCOUNTCENTER_SUPERADMIN_EMAILS`, kosongkan `ACCOUNTCENTER_DUMMY_PASSWORD`. Setelah masa uji, nyalakan 2FA di menu **Keamanan**.
 
 Keamanan production (wajib):
 
-- `APP_ENV=production`, `APP_DEBUG=false` (pesan galat teknis tidak pernah tampil ke pengunjung).
-- `SESSION_SECURE_COOKIE=true` setelah HTTPS terpasang, supaya cookie sesi panel tidak pernah terkirim lewat http.
+- `NODE_ENV=production` (pesan galat teknis tidak pernah tampil ke pengunjung; cookie sesi otomatis hanya lewat HTTPS).
 - `TRUSTED_PROXIES` diisi alamat proxy yang sebenarnya, **jangan `*`**: dengan `*` siapa pun bisa memalsukan IP lewat header `X-Forwarded-For` dan melewati whitelist IP.
 - `ACCOUNTCENTER_DUMMY_PASSWORD` dikosongkan.
 - Login 2FA: 5 kode salah mengunci 2FA akun itu selama 15 menit (dihitung per akun, bukan per percobaan login).

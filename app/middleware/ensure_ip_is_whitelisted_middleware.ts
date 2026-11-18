@@ -1,9 +1,23 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
+import { failure } from '#support/api_response'
+import { endSession } from '#services/auth/session_starter'
+import { REJECTION_REASON, allowsUser, rejectionMessage } from '#services/ip_whitelist'
 
-// Sementara: diganti modul login.
+/**
+ * Memutus sesi member yang memakai panel dari luar jaringan yang terdaftar di whitelist IP.
+ */
 export default class EnsureIpIsWhitelistedMiddleware {
-    async handle(_ctx: HttpContext, next: NextFn) {
+    async handle(ctx: HttpContext, next: NextFn) {
+        const user = ctx.auth.user
+        const ip = ctx.request.ip()
+
+        if (user && !(await allowsUser(user, ip))) {
+            await endSession(ctx)
+
+            return failure(ctx, rejectionMessage(ip), { reason: [REJECTION_REASON] }, 403)
+        }
+
         return next()
     }
 }
