@@ -11,19 +11,19 @@ Standar pengembangan: [03-standar-untuk-ai.md](03-standar-untuk-ai.md).
 
 ## Teknologi
 
-AdonisJS 7 (Lucid, auth + session, Shield, Limiter, VineJS, Japa) · Vue 3 + Vue Router + Pinia + Reka UI + VeeValidate + TanStack Table + Lucide + Day.js · Tailwind CSS 4 · Vite · PostgreSQL 17 (full-text search + `pg_trgm`) · Redis (sesi, rate limit) · MinIO (dev) / DigitalOcean Spaces (production) untuk logo.
+AdonisJS 7 (Lucid, auth + session, Shield, Limiter, VineJS, Japa) · Vue 3 + Vue Router + Pinia + Reka UI + VeeValidate + TanStack Table + Lucide + Day.js · Tailwind CSS 4 · Vite · PostgreSQL 17 (full-text search + `pg_trgm`) · Redis (sesi, rate limit). Logo situs tidak disimpan di server: ditampilkan langsung dari domain pemiliknya.
 
 ## Menjalankan di lokal
 
 Prasyarat: Node.js 24+, Docker.
 
-1. Salin `.env.example` menjadi `.env`, isi `DB_PASSWORD`, `REDIS_PASSWORD`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, lalu buat kunci aplikasi:
+1. Salin `.env.example` menjadi `.env`, isi `DB_PASSWORD` dan `REDIS_PASSWORD`, lalu buat kunci aplikasi:
 
     ```
     node ace generate:key
     ```
 
-2. Nyalakan PostgreSQL, Redis, dan MinIO (bucket + akses baca publik `logos/` dibuat otomatis):
+2. Nyalakan PostgreSQL dan Redis:
 
     ```
     docker compose up -d
@@ -123,7 +123,7 @@ Pengaturan `.env`:
 
 | Kunci | Isi |
 |---|---|
-| `ACCOUNTCENTER_DRIVER` | `http` (Account Center sungguhan) atau `dummy` (hanya uji; **otomatis diabaikan bila `APP_ENV=production`**) |
+| `ACCOUNTCENTER_DRIVER` | `http` (Account Center sungguhan) atau `dummy` (hanya uji; **diabaikan bila `NODE_ENV=production`**, kecuali server uji yang menyalakan `ACCOUNTCENTER_DUMMY_IN_PRODUCTION=true` dengan password dummy minimal 16 karakter) |
 | `ACCOUNTCENTER_URI` / `_NAME` / `_SECRET` | Alamat (wajib https), nama klien, dan kunci rahasia dari tim Account Center |
 | `ACCOUNTCENTER_DUMMY_PASSWORD` | Kata sandi yang diterima Account Center dummy untuk email apa pun |
 | `ACCOUNTCENTER_SUPERADMIN_EMAILS` | Email superadmin awal (dipisah koma); otomatis aktif sebagai superadmin saat login. Tanpa ini tidak ada yang bisa mengaktifkan akun pertama |
@@ -133,7 +133,7 @@ Lokal saat ini memakai driver `dummy`: masuk dengan `pemilik.uji@example.com` (s
 ## Keamanan yang perlu diketahui
 
 - Semua permintaan ke situs luar (data situs, logo, crawler) lewat `UrlGuard`: hanya http/https port 80/443, IP privat/reserved ditolak, koneksi dikunci ke IP yang sudah diperiksa (anti DNS rebinding), redirect diperiksa ulang.
-- Logo: diunduh dari situs, jenis dicek dari isi berkas (PNG/JPG/WEBP/GIF/ICO, tanpa SVG), maks. 512 KB, nama berkas dibuat sistem, database hanya menyimpan path. Bila tidak ada ikon yang layak, domain disimpan tanpa logo.
+- Logo: alamat ikon situs disimpan setelah dipastikan isinya benar-benar gambar (PNG/JPG/WEBP/GIF/ICO/SVG, maks. 512 KB) dan ditampilkan lewat `<img>` langsung dari domain pemiliknya (skrip di dalam SVG tidak berjalan di `<img>`). Bila ikon kemudian hilang, tampilan memakai inisial situs. Bila tidak ada ikon yang layak, domain disimpan tanpa logo; crawl ulang memperbarui alamat logo.
 - Sorotan hasil pencarian memakai penanda khusus, bukan HTML, sehingga frontend tidak memakai `v-html`.
 
 ## Pengujian
@@ -149,7 +149,7 @@ Test backend (Japa) memakai database `cekcari_test` dan pengaturan dari `.env.te
 
 Domain: isi `SEARCH_DOMAIN` dan `PANEL_DOMAIN` dengan nama host sebenarnya (tanpa `https://`), arahkan keduanya ke server yang sama. Build: `node ace build`, lalu jalankan `node build/bin/server.js` dan `node build/ace.js queue:work` (mis. lewat PM2).
 
-Logo (DigitalOcean Spaces): ganti nilai `AWS_*` di `.env`: `AWS_ENDPOINT=https://<region>.digitaloceanspaces.com`, `AWS_URL=https://<bucket>.<region>.digitaloceanspaces.com`, `AWS_DEFAULT_REGION=<region>`, `AWS_USE_PATH_STYLE_ENDPOINT=false`.
+Panduan pemasangan langkah demi langkah (server uji cari.salahmu.fun, PM2, Cloudflare Tunnel): [DEPLOY.md](DEPLOY.md).
 
 Login: `NODE_ENV=production`, `TRUSTED_PROXIES` sesuai proxy di depan aplikasi, `ACCOUNTCENTER_DRIVER=http`, isi `ACCOUNTCENTER_URI`/`_NAME`/`_SECRET` dan `ACCOUNTCENTER_SUPERADMIN_EMAILS`, kosongkan `ACCOUNTCENTER_DUMMY_PASSWORD`. Setelah masa uji, nyalakan 2FA di menu **Keamanan**.
 

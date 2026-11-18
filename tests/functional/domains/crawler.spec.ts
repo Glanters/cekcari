@@ -9,7 +9,6 @@ import DomainCrawler from '#services/domain_crawler'
 import { createDomain } from '#tests/functional/domains/domain_helpers'
 import {
     fakeDns,
-    fakeObjectStorage,
     fakeRemoteSites,
     htmlPage,
     restoreRemoteFakes,
@@ -38,7 +37,6 @@ test.group('Crawler', (group) => {
     group.each.setup(() => testUtils.db().withGlobalTransaction())
     group.each.setup(() => {
         fakeDns()
-        fakeObjectStorage()
 
         return () => restoreRemoteFakes()
     })
@@ -226,6 +224,8 @@ test.group('Crawler', (group) => {
         })
         fakeRemoteSites({
             'https://pengalih.test/robots.txt': { status: 404 },
+            // Crawl ulang juga memperbarui logo dari situs; situs ini tidak punya ikon.
+            'https://pengalih.test/favicon.ico': { status: 404 },
             'https://pengalih.test/promo': { status: 302, location: 'https://tujuan-lain.test/' },
             'https://tujuan-lain.test/': htmlPage('<title>Situs Tujuan</title><body>Isi</body>'),
         })

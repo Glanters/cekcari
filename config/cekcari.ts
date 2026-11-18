@@ -16,6 +16,7 @@ export const seo = {
         'Cari situs dan halaman web Indonesia dengan cepat di CekCari. Ketik kata kunci, temukan situs yang relevan beserta halaman-halaman di dalamnya.',
     imagePath: '/images/brand/cekcari-logo-512.png',
     googleSiteVerification: env.get('GOOGLE_SITE_VERIFICATION') ?? '',
+    isIndexingAllowed: env.get('SEO_ALLOW_INDEXING') ?? true,
 }
 
 export const crawler = {
@@ -29,15 +30,6 @@ export const crawler = {
     maxLogoBytes: 512 * 1024,
 }
 
-export const storage = {
-    accessKeyId: env.get('AWS_ACCESS_KEY_ID'),
-    secretAccessKey: env.get('AWS_SECRET_ACCESS_KEY'),
-    region: env.get('AWS_DEFAULT_REGION'),
-    bucket: env.get('AWS_BUCKET'),
-    endpoint: env.get('AWS_ENDPOINT'),
-    publicUrl: env.get('AWS_URL').replace(/\/+$/, ''),
-    forcePathStyle: env.get('AWS_USE_PATH_STYLE_ENDPOINT') ?? false,
-}
 
 export const accountCenter = {
     driver: env.get('ACCOUNTCENTER_DRIVER') ?? 'http',
@@ -46,5 +38,6 @@ export const accountCenter = {
     secret: env.get('ACCOUNTCENTER_SECRET'),
     timeoutMs: env.get('ACCOUNTCENTER_TIMEOUT_MS') ?? 8000,
     dummyPassword: env.get('ACCOUNTCENTER_DUMMY_PASSWORD'),
+    isDummyAllowedInProduction: env.get('ACCOUNTCENTER_DUMMY_IN_PRODUCTION') ?? false,
     superadminEmails: env.get('ACCOUNTCENTER_SUPERADMIN_EMAILS') ?? '',
 }

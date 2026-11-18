@@ -17,6 +17,9 @@ export default defineConfig({
         vue({ template: { transformAssetUrls: { base: null, includeAbsolute: false } } }),
         tailwindcss(),
     ],
+    // Manifest di luar folder bertitik (.vite): server statis tidak menyajikan folder bertitik,
+    // padahal service worker membaca manifest ini untuk menyimpan aplikasi agar bisa dibuka offline.
+    build: { manifest: 'manifest.json' },
     resolve: {
         alias: { '@': fileURLToPath(new URL('./resources/js', import.meta.url)) },
     },

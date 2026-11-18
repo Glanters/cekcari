@@ -9,7 +9,6 @@ import {
 } from '#tests/functional/domains/domain_helpers'
 import {
     fakeDns,
-    fakeObjectStorage,
     fakeRemoteSites,
     htmlPage,
     restoreRemoteFakes,
@@ -19,7 +18,6 @@ test.group('Panel domain: superadmin mengelola situs semua member', (group) => {
     group.each.setup(() => testUtils.db().withGlobalTransaction())
     group.each.setup(() => {
         fakeDns()
-        fakeObjectStorage()
 
         return () => restoreRemoteFakes()
     })

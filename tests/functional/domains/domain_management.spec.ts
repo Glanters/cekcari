@@ -5,18 +5,13 @@ import { DateTime } from 'luxon'
 import Domain from '#models/domain'
 import Page from '#models/page'
 import { createUser } from '#tests/functional/auth/auth_helpers'
-import {
-    createDomain,
-    queuedCrawlDomainIds,
-} from '#tests/functional/domains/domain_helpers'
+import { createDomain, queuedCrawlDomainIds } from '#tests/functional/domains/domain_helpers'
 import {
     PNG_BYTES,
     fakeDns,
-    fakeObjectStorage,
     fakeRemoteSites,
     htmlPage,
     restoreRemoteFakes,
-    type FakeObjectStorage,
     type FakeResponse,
 } from '#tests/fakes/remote_sites'
 
@@ -31,12 +26,9 @@ const TOKOKU_SITE: Record<string, FakeResponse> = {
 }
 
 test.group('Panel domain: menambah dan mengubah link', (group) => {
-    let storage: FakeObjectStorage
-
     group.each.setup(() => testUtils.db().withGlobalTransaction())
     group.each.setup(() => {
         fakeDns()
-        storage = fakeObjectStorage()
 
         return () => restoreRemoteFakes()
     })
@@ -72,8 +64,9 @@ test.group('Panel domain: menambah dan mengubah link', (group) => {
 
         const domain = await Domain.firstOrFail()
         assert.equal(domain.createdBy, user.id)
-        assert.match(domain.logoPath ?? '', /^logos\/[0-9a-f-]{36}\.png$/)
-        assert.isTrue(storage.files.has(domain.logoPath as string))
+        // Logo tidak disalin: yang disimpan alamat ikon di situs pemiliknya.
+        assert.equal(domain.logoUrl, 'https://tokoku.com/logo.png')
+        response.assertBodyContains({ data: { logo_url: 'https://tokoku.com/logo.png' } })
         assert.deepEqual(await queuedCrawlDomainIds(), [domain.id])
     })
 
@@ -202,14 +195,29 @@ test.group('Panel domain: menambah dan mengubah link', (group) => {
         })
     })
 
-    test('tetap menyimpan domain tanpa logo bila ikon situs bukan gambar yang aman', async ({
-        client,
-        assert,
-    }) => {
+    test('tetap menyimpan domain tanpa logo bila alamat ikon bukan gambar', async ({ client }) => {
+        fakeRemoteSites({
+            'tokoku.com/logo.png': htmlPage('<html><body>Halaman tidak ditemukan</body></html>'),
+            'tokoku.com/*': htmlPage(
+                '<html><head><title>Tokoku</title><link rel="icon" href="/logo.png"></head><body>Halo</body></html>'
+            ),
+        })
+
+        const response = await panel(client)
+            .post('/api/v1/domains')
+            .json({ url: 'https://tokoku.com' })
+            .withCsrfToken()
+            .loginAs(await createUser())
+
+        response.assertStatus(201)
+        response.assertBodyContains({ data: { logo_url: null } })
+    })
+
+    test('menerima ikon SVG karena logo hanya ditampilkan lewat <img>', async ({ client }) => {
         fakeRemoteSites({
             'tokoku.com/logo.svg': {
                 status: 200,
-                body: '<svg><script>alert(1)</script></svg>',
+                body: '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"></svg>',
                 contentType: 'image/svg+xml',
             },
             'tokoku.com/*': htmlPage(
@@ -224,8 +232,7 @@ test.group('Panel domain: menambah dan mengubah link', (group) => {
             .loginAs(await createUser())
 
         response.assertStatus(201)
-        response.assertBodyContains({ data: { logo_url: null } })
-        assert.equal(storage.files.size, 0)
+        response.assertBodyContains({ data: { logo_url: 'https://tokoku.com/logo.svg' } })
     })
 
     test('menolak link yang situsnya tidak dapat dibuka', async ({ client, assert }) => {
@@ -325,11 +332,10 @@ test.group('Panel domain: menambah dan mengubah link', (group) => {
                 host: 'lama.com',
                 url: 'https://lama.com',
                 title: 'Lama',
-                logoPath: 'logos/lama.png',
+                logoUrl: 'https://lama.com/favicon.ico',
             },
             user
         )
-        storage.files.set('logos/lama.png', PNG_BYTES)
         await Page.create({
             domainId: domain.id,
             url: 'https://lama.com/',
@@ -345,9 +351,13 @@ test.group('Panel domain: menambah dan mengubah link', (group) => {
 
         response.assertStatus(200)
         response.assertBodyContains({
-            data: { title: 'Tokoku Resmi', pages_count: 0, crawl_status: 'pending' },
+            data: {
+                title: 'Tokoku Resmi',
+                pages_count: 0,
+                crawl_status: 'pending',
+                logo_url: 'https://tokoku.com/logo.png',
+            },
         })
-        assert.isFalse(storage.files.has('logos/lama.png'))
         assert.deepEqual(await queuedCrawlDomainIds(), [domain.id])
     })
 
@@ -377,7 +387,6 @@ test.group('Panel domain: daftar, hapus, promosi, dan pembaruan data', (group) =
     group.each.setup(() => testUtils.db().withGlobalTransaction())
     group.each.setup(() => {
         fakeDns()
-        fakeObjectStorage()
         fakeRemoteSites()
 
         return () => restoreRemoteFakes()
@@ -437,9 +446,7 @@ test.group('Panel domain: daftar, hapus, promosi, dan pembaruan data', (group) =
         const deletedResponse = await panel(client)
             .get(`/api/v1/domains/${deleted.id}`)
             .loginAs(user)
-        const missingResponse = await panel(client)
-            .get('/api/v1/domains/999999999')
-            .loginAs(user)
+        const missingResponse = await panel(client).get('/api/v1/domains/999999999').loginAs(user)
 
         deletedResponse.assertStatus(404)
         missingResponse.assertStatus(404)

@@ -9,16 +9,26 @@ import { HttpAccountCenterClient } from '#services/account_center/http_account_c
 
 type AccountCenterConfig = typeof accountCenter
 
+// Server uji yang terbuka di internet butuh kata sandi dummy yang sulit ditebak.
+export const MIN_PRODUCTION_DUMMY_PASSWORD_LENGTH = 16
+
 /**
- * Dummy hanya untuk masa uji. Di production login selalu lewat Account Center sungguhan,
- * walaupun ACCOUNTCENTER_DRIVER=dummy terlanjur terisi.
+ * Dummy untuk masa uji. Di mode production dummy hanya dipakai bila dinyalakan eksplisit
+ * (ACCOUNTCENTER_DUMMY_IN_PRODUCTION=true, untuk server uji) dan kata sandinya cukup panjang;
+ * selain itu login selalu lewat Account Center sungguhan walaupun ACCOUNTCENTER_DRIVER=dummy terisi.
  */
 export function selectAccountCenterClient(
     config: AccountCenterConfig,
     isProduction: boolean
 ): AccountCenterClient {
-    if (config.driver === 'dummy' && !isProduction) {
-        return new DummyAccountCenterClient(config.dummyPassword?.release() ?? '')
+    const dummyPassword = config.dummyPassword?.release() ?? ''
+    const isDummyAllowed =
+        !isProduction ||
+        (config.isDummyAllowedInProduction &&
+            dummyPassword.length >= MIN_PRODUCTION_DUMMY_PASSWORD_LENGTH)
+
+    if (config.driver === 'dummy' && isDummyAllowed) {
+        return new DummyAccountCenterClient(dummyPassword)
     }
 
     return new HttpAccountCenterClient({

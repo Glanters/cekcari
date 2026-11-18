@@ -4,7 +4,6 @@ import HttpTransport, {
     type TransportRequest,
     type TransportResponse,
 } from '#services/http_transport'
-import ObjectStorage from '#services/object_storage'
 import UrlGuard, { type HostResolver } from '#services/url_guard'
 
 /**
@@ -63,17 +62,6 @@ export class FakeRemoteSites extends HttpTransport {
     }
 }
 
-export class FakeObjectStorage extends ObjectStorage {
-    readonly files = new Map<string, Buffer>()
-
-    async putPublic(path: string, contents: Buffer): Promise<void> {
-        this.files.set(path, contents)
-    }
-
-    async delete(path: string): Promise<void> {
-        this.files.delete(path)
-    }
-}
 
 export function htmlPage(body: string): FakeResponse {
     return { status: 200, body, contentType: 'text/html; charset=utf-8' }
@@ -99,13 +87,7 @@ export function fakeRemoteSites(routes: Record<string, FakeResponse> = {}): Fake
     return sites
 }
 
-export function fakeObjectStorage(): FakeObjectStorage {
-    const storage = new FakeObjectStorage()
-    app.container.swap(ObjectStorage, () => storage)
-
-    return storage
-}
 
 export function restoreRemoteFakes() {
-    app.container.restoreAll([UrlGuard, HttpTransport, ObjectStorage])
+    app.container.restoreAll([UrlGuard, HttpTransport])
 }

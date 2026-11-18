@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { test } from '@japa/runner'
 import { accountCenter } from '#config/cekcari'
+import { Secret } from '@adonisjs/core/helpers'
 import { selectAccountCenterClient } from '#services/account_center/account_center'
 import { decrypt, encrypt, keyFrom } from '#services/account_center/aes_cbc256'
 import { DummyAccountCenterClient } from '#services/account_center/dummy_account_center_client'
@@ -26,10 +27,7 @@ type LoginPayloadVector = {
 
 // Dihasilkan PHP 8.3 dengan pustaka Account Center; nilai rahasia di dalamnya khusus test.
 const vectors = JSON.parse(
-    readFileSync(
-        new URL('../../fixtures/accountCenterPhpVectors.json', import.meta.url),
-        'utf8'
-    )
+    readFileSync(new URL('../../fixtures/accountCenterPhpVectors.json', import.meta.url), 'utf8')
 ) as {
     secret: string
     key: string
@@ -217,6 +215,27 @@ test.group('Account Center: protokol', () => {
         assert.instanceOf(selectAccountCenterClient(dummyConfig, true), HttpAccountCenterClient)
         assert.instanceOf(
             selectAccountCenterClient({ ...accountCenter, driver: 'http' as const }, false),
+            HttpAccountCenterClient
+        )
+    })
+
+    test('dummy di production hanya bila dinyalakan eksplisit dengan kata sandi panjang', ({
+        assert,
+    }) => {
+        const testServer = {
+            ...accountCenter,
+            driver: 'dummy' as const,
+            isDummyAllowedInProduction: true,
+            dummyPassword: new Secret('kata-sandi-uji-yang-panjang'),
+        }
+
+        assert.instanceOf(selectAccountCenterClient(testServer, true), DummyAccountCenterClient)
+        assert.instanceOf(
+            selectAccountCenterClient({ ...testServer, dummyPassword: new Secret('pendek') }, true),
+            HttpAccountCenterClient
+        )
+        assert.instanceOf(
+            selectAccountCenterClient({ ...testServer, isDummyAllowedInProduction: false }, true),
             HttpAccountCenterClient
         )
     })

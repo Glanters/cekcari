@@ -11,7 +11,7 @@ const CACHE_VERSION = 'v1';
 const PAGE_CACHE = `cekcari-pages-${CACHE_VERSION}`;
 const ASSET_CACHE = `cekcari-assets-${CACHE_VERSION}`;
 const OFFLINE_FALLBACK_URL = '/';
-const BUILD_MANIFEST_URL = '/build/.vite/manifest.json';
+const BUILD_MANIFEST_URL = '/build/manifest.json';
 const APP_ENTRIES = ['resources/js/search.js', 'resources/css/app.css'];
 
 const PRECACHE_URLS = [

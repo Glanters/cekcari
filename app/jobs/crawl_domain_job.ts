@@ -52,7 +52,7 @@ export default class CrawlDomainJob implements QueueJob {
         await domain.save()
 
         try {
-            await this.domainService.refreshTextMetadata(
+            await this.domainService.refreshMetadata(
                 domain,
                 await this.metadataFetcher.fetch(domain.url, domain.host)
             )

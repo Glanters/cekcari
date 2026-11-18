@@ -8,7 +8,7 @@ import { dispatchDomainCrawl } from '#jobs/crawl_domain_dispatch'
 import Domain from '#models/domain'
 import Tag from '#models/tag'
 import type User from '#models/user'
-import LogoDownloader from '#services/logo_downloader'
+import SiteIconFinder from '#services/site_icon_finder'
 import SiteMetadataFetcher, { type SiteMetadata } from '#services/site_metadata_fetcher'
 import { addressOf, entryUrlOf, hostOf } from '#support/site_address'
 
@@ -36,7 +36,7 @@ function isUniqueViolation(error: unknown): boolean {
 export default class DomainService {
     constructor(
         private readonly metadataFetcher: SiteMetadataFetcher,
-        private readonly logoDownloader: LogoDownloader
+        private readonly iconFinder: SiteIconFinder
     ) {}
 
     /**
@@ -46,35 +46,29 @@ export default class DomainService {
      */
     async create(actor: User, url: string, ownerId: number = actor.id): Promise<Domain> {
         const { siteUrl, metadata } = await this.fetchReachableSite(url)
-        const logoPath = await this.logoDownloader.download(metadata.iconUrl, siteUrl)
+        const logoUrl = await this.iconFinder.find(metadata.iconUrl, siteUrl)
 
-        try {
-            return await db.transaction(async (trx) => {
-                const domain = await Domain.create(
-                    {
-                        userId: ownerId,
-                        url: siteUrl,
-                        host: hostOf(url),
-                        title: metadata.title,
-                        description: metadata.description,
-                        logoPath,
-                        crawlStatus: 'pending',
-                        createdBy: actor.id,
-                        updatedBy: actor.id,
-                    },
-                    { client: trx }
-                )
+        return db.transaction(async (trx) => {
+            const domain = await Domain.create(
+                {
+                    userId: ownerId,
+                    url: siteUrl,
+                    host: hostOf(url),
+                    title: metadata.title,
+                    description: metadata.description,
+                    logoUrl,
+                    crawlStatus: 'pending',
+                    createdBy: actor.id,
+                    updatedBy: actor.id,
+                },
+                { client: trx }
+            )
 
-                await this.syncTags(domain, metadata.tags, trx)
-                await dispatchDomainCrawl(domain.id, trx)
+            await this.syncTags(domain, metadata.tags, trx)
+            await dispatchDomainCrawl(domain.id, trx)
 
-                return domain
-            })
-        } catch (error) {
-            await this.logoDownloader.delete(logoPath)
-
-            throw error
-        }
+            return domain
+        })
     }
 
     /**
@@ -83,51 +77,44 @@ export default class DomainService {
      */
     async update(domain: Domain, editor: User, url: string): Promise<Domain> {
         const { siteUrl, metadata } = await this.fetchReachableSite(url)
-        const newLogoPath = await this.logoDownloader.download(metadata.iconUrl, siteUrl)
-        const oldLogoPath = domain.logoPath
+        const logoUrl = await this.iconFinder.find(metadata.iconUrl, siteUrl)
         // Link berbeda berarti cakupan crawl berbeda, jadi halaman lama tidak berlaku lagi.
         const isLinkChanged = addressOf(url) !== addressOf(domain.url)
 
-        try {
-            await db.transaction(async (trx) => {
-                domain.useTransaction(trx)
-                domain.merge({
-                    url: siteUrl,
-                    host: hostOf(url),
-                    title: metadata.title,
-                    description: metadata.description,
-                    logoPath: newLogoPath,
-                    crawlStatus: 'pending',
-                    lastCrawledAt: isLinkChanged ? null : domain.lastCrawledAt,
-                    updatedBy: editor.id,
-                })
-                await domain.save()
-
-                if (isLinkChanged) {
-                    await domain.related('pages').query().delete()
-                }
-
-                await this.syncTags(domain, metadata.tags, trx)
-                await dispatchDomainCrawl(domain.id, trx)
+        await db.transaction(async (trx) => {
+            domain.useTransaction(trx)
+            domain.merge({
+                url: siteUrl,
+                host: hostOf(url),
+                title: metadata.title,
+                description: metadata.description,
+                logoUrl,
+                crawlStatus: 'pending',
+                lastCrawledAt: isLinkChanged ? null : domain.lastCrawledAt,
+                updatedBy: editor.id,
             })
-        } catch (error) {
-            await this.logoDownloader.delete(newLogoPath)
+            await domain.save()
 
-            throw error
-        }
+            if (isLinkChanged) {
+                await domain.related('pages').query().delete()
+            }
 
-        await this.logoDownloader.delete(oldLogoPath)
+            await this.syncTags(domain, metadata.tags, trx)
+            await dispatchDomainCrawl(domain.id, trx)
+        })
 
         return domain
     }
 
     /**
-     * Dipakai crawler agar judul, deskripsi, dan tag mengikuti perubahan di situs pemilik.
+     * Dipakai crawler agar judul, deskripsi, tag, dan logo mengikuti perubahan di situs pemilik.
      */
-    async refreshTextMetadata(domain: Domain, metadata: SiteMetadata): Promise<void> {
+    async refreshMetadata(domain: Domain, metadata: SiteMetadata): Promise<void> {
+        const logoUrl = await this.iconFinder.find(metadata.iconUrl, domain.url)
+
         await db.transaction(async (trx) => {
             domain.useTransaction(trx)
-            domain.merge({ title: metadata.title, description: metadata.description })
+            domain.merge({ title: metadata.title, description: metadata.description, logoUrl })
             await domain.save()
             await this.syncTags(domain, metadata.tags, trx)
         })

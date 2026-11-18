@@ -11,7 +11,6 @@ import QueueWorker, { STALE_RESERVATION_SECONDS, type QueueJob } from '#services
 import { createDomain, queuedCrawlDomainIds } from '#tests/functional/domains/domain_helpers'
 import {
     fakeDns,
-    fakeObjectStorage,
     fakeRemoteSites,
     htmlPage,
     restoreRemoteFakes,
@@ -48,7 +47,6 @@ test.group('Antrean PostgreSQL', (group) => {
         handledPayloads.length = 0
         failedPayloads.length = 0
         fakeDns()
-        fakeObjectStorage()
 
         return () => restoreRemoteFakes()
     })

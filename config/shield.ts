@@ -1,5 +1,4 @@
 import { defineConfig } from '@adonisjs/shield'
-import { storage } from '#config/cekcari'
 
 const shieldConfig = defineConfig({
     csp: {
@@ -9,8 +8,8 @@ const shieldConfig = defineConfig({
             scriptSrc: ["'self'", '@nonce', '@viteUrl'],
             styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', '@viteUrl'],
             fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
-            // Logo situs disimpan di bucket S3/Spaces.
-            imgSrc: ["'self'", 'data:', new URL(storage.publicUrl).origin],
+            // Logo situs dimuat langsung dari domain pemiliknya, jadi alamat gambar luar diizinkan (hanya gambar).
+            imgSrc: ["'self'", 'data:', 'https:', 'http:'],
             connectSrc: ["'self'", '@viteUrl', 'ws:', 'wss:'],
             workerSrc: ["'self'"],
             manifestSrc: ["'self'"],

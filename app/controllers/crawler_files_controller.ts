@@ -7,13 +7,25 @@ import { seo } from '#config/cekcari'
  */
 export default class CrawlerFilesController {
     async searchRobots({ response }: HttpContext) {
-        const lines = ['User-agent: *', 'Allow: /', 'Disallow: /api/', '', `Sitemap: ${seo.searchUrl}/sitemap.xml`]
+        const lines = seo.isIndexingAllowed
+            ? [
+                  'User-agent: *',
+                  'Allow: /',
+                  'Disallow: /api/',
+                  '',
+                  `Sitemap: ${seo.searchUrl}/sitemap.xml`,
+              ]
+            : ['User-agent: *', 'Disallow: /']
 
-        return response.header('Content-Type', 'text/plain; charset=UTF-8').send(`${lines.join('\n')}\n`)
+        return response
+            .header('Content-Type', 'text/plain; charset=UTF-8')
+            .send(`${lines.join('\n')}\n`)
     }
 
     async panelRobots({ response }: HttpContext) {
-        return response.header('Content-Type', 'text/plain; charset=UTF-8').send('User-agent: *\nDisallow: /\n')
+        return response
+            .header('Content-Type', 'text/plain; charset=UTF-8')
+            .send('User-agent: *\nDisallow: /\n')
     }
 
     // Hanya beranda yang layak diindeks; halaman hasil pencarian sengaja tidak dimasukkan.

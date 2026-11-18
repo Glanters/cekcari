@@ -4,7 +4,6 @@ import type { BelongsTo, HasMany, ManyToMany } from '@adonisjs/lucid/types/relat
 import User from '#models/user'
 import Page from '#models/page'
 import Tag from '#models/tag'
-import { storage } from '#config/cekcari'
 
 export const CRAWL_STATUSES = ['pending', 'crawling', 'done', 'failed', 'redirected'] as const
 export type CrawlStatus = (typeof CRAWL_STATUSES)[number]
@@ -29,7 +28,8 @@ export default class Domain extends BaseModel {
     declare description: string
 
     @column()
-    declare logoPath: string | null
+    // Alamat ikon di situs pemiliknya; ditampilkan langsung dari sana, tidak disalin ke server.
+    declare logoUrl: string | null
 
     @column()
     declare isPromoted: boolean
@@ -71,8 +71,4 @@ export default class Domain extends BaseModel {
     static active = scope((query) => {
         query.whereNull('domains.deleted_at')
     })
-
-    get logoUrl(): string | null {
-        return this.logoPath ? `${storage.publicUrl}/${this.logoPath}` : null
-    }
 }

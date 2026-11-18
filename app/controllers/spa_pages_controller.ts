@@ -70,6 +70,12 @@ export default class SpaPagesController {
 
     // Hanya domain pencarian yang bisa dipasang sebagai aplikasi (PWA); panel pemilik tetap situs biasa.
     private render(ctx: HttpContext, entry: string, page: PageSeo) {
+        // Server uji: tidak ada satu halaman pun yang boleh masuk indeks mesin pencari.
+        if (!seo.isIndexingAllowed) {
+            ctx.response.header('X-Robots-Tag', 'noindex, nofollow')
+            page = { ...page, robots: 'noindex, nofollow', canonical: null }
+        }
+
         return ctx.view.render('app', {
             entry,
             page,
