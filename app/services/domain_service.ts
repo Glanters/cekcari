@@ -3,7 +3,7 @@ import db from '@adonisjs/lucid/services/db'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import { errors as vineErrors } from '@vinejs/vine'
 import { DateTime } from 'luxon'
-import { RemoteFetchException } from '#exceptions/remote_fetch_exception'
+import { RemoteFetchException, SiteRedirectedException } from '#exceptions/remote_fetch_exception'
 import { dispatchDomainCrawl } from '#jobs/crawl_domain_dispatch'
 import Domain from '#models/domain'
 import Tag from '#models/tag'
@@ -190,7 +190,8 @@ export default class DomainService {
 
     /**
      * Membaca halaman yang didaftarkan. Alamat dicoba lewat https lebih dulu; bila situs
-     * hanya melayani http, alamat http yang dipakai dan disimpan.
+     * hanya melayani http, alamat http yang dipakai dan disimpan. Link pengalih yang tujuannya
+     * menolak pembaca otomatis tetap diterima; crawl berikutnya menandainya "Dialihkan".
      */
     private async fetchReachableSite(url: string): Promise<ReachableSite> {
         const host = hostOf(url)
@@ -199,6 +200,14 @@ export default class DomainService {
         try {
             return { siteUrl, metadata: await this.metadataFetcher.fetch(siteUrl, host) }
         } catch (httpsFailure) {
+            // Link sudah terbukti hidup karena mengalihkan; mencoba http tidak akan mengubah tujuannya.
+            if (httpsFailure instanceof SiteRedirectedException) {
+                return {
+                    siteUrl,
+                    metadata: this.metadataFetcher.forRedirectLink(siteUrl, httpsFailure.targetUrl),
+                }
+            }
+
             if (
                 !(httpsFailure instanceof RemoteFetchException) ||
                 !siteUrl.startsWith('https://')
@@ -214,6 +223,16 @@ export default class DomainService {
                     metadata: await this.metadataFetcher.fetch(httpUrl, host),
                 }
             } catch (httpFailure) {
+                if (httpFailure instanceof SiteRedirectedException) {
+                    return {
+                        siteUrl: httpUrl,
+                        metadata: this.metadataFetcher.forRedirectLink(
+                            httpUrl,
+                            httpFailure.targetUrl
+                        ),
+                    }
+                }
+
                 if (!(httpFailure instanceof RemoteFetchException)) {
                     throw httpFailure
                 }

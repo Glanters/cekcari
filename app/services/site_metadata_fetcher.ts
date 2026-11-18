@@ -1,8 +1,9 @@
 import { inject } from '@adonisjs/core'
-import { RemoteFetchException } from '#exceptions/remote_fetch_exception'
+import { RemoteFetchException, SiteRedirectedException } from '#exceptions/remote_fetch_exception'
 import HtmlExtractor, { type ExtractedHtml } from '#services/html_extractor'
 import RemotePageFetcher from '#services/remote_page_fetcher'
 import { countChars, sliceChars } from '#support/characters'
+import { hostOf, isSameSite } from '#support/site_address'
 
 export type SiteMetadata = {
     title: string
@@ -32,6 +33,14 @@ export default class SiteMetadataFetcher {
     async fetch(siteUrl: string, host: string): Promise<SiteMetadata> {
         const page = await this.fetcher.fetch(siteUrl)
 
+        // Link pengalih (mis. dkwl.b-cdn.net/nama-kl1) ke situs yang menolak pembaca otomatis tetap
+        // link yang sah; laporkan tujuannya, jangan dianggap situs mati.
+        const isUnreadable = page.isBlocked() || (page.isSuccessful() && !page.isHtml())
+
+        if (isUnreadable && !isSameSite(page.url, host)) {
+            throw new SiteRedirectedException(page.url)
+        }
+
         if (!page.isSuccessful()) {
             throw new RemoteFetchException(
                 `Situs tidak dapat dibuka (kode ${page.status}). Pastikan link benar dan situs sedang aktif.`
@@ -51,6 +60,37 @@ export default class SiteMetadataFetcher {
             description: this.description(extracted),
             tags: this.tags(extracted.keywords),
             iconUrl: extracted.iconUrl,
+        }
+    }
+
+    /**
+     * Data pengganti untuk link pengalih yang tujuannya tidak bisa dibaca: judul dari path link
+     * (mis. "/d/indrabet-kl2/register" menjadi "indrabet-kl2 / register") agar tetap bisa dicari.
+     */
+    forRedirectLink(linkUrl: string, targetUrl: string): SiteMetadata {
+        const targetHost = URL.parse(targetUrl)?.hostname.toLowerCase() ?? hostOf(linkUrl)
+        const pathWords = new URL(linkUrl).pathname
+            .split('/')
+            .map((segment) => this.decodedSegment(segment).replaceAll('_', ' ').trim())
+            .filter((segment) => countChars(segment) > 1)
+
+        return {
+            title: sliceChars(
+                pathWords.length > 0 ? pathWords.join(' / ') : targetHost,
+                MAX_TITLE_LENGTH
+            ),
+            description: `Link menuju ${targetHost}.`,
+            tags: [],
+            iconUrl: null,
+        }
+    }
+
+    // Path yang encodingnya rusak dipakai apa adanya daripada menggagalkan pendaftaran link.
+    private decodedSegment(segment: string): string {
+        try {
+            return decodeURIComponent(segment)
+        } catch {
+            return segment
         }
     }
 

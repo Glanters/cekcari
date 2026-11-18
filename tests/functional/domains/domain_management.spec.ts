@@ -155,6 +155,63 @@ test.group('Panel domain: menambah dan mengubah link', (group) => {
         assert.lengthOf(await Domain.query().where('host', 'dkwl.b-cdn.net'), 2)
     })
 
+    test('menerima link pengalih walau situs tujuannya memblokir pembaca otomatis', async ({
+        client,
+        assert,
+    }) => {
+        fakeRemoteSites({
+            'https://dkwl.b-cdn.net/d/indrabet-kl2/register': {
+                status: 302,
+                location: 'https://besar.indrabet788.life/register',
+            },
+            // Tantangan bot Cloudflare ("Just a moment...") selalu dijawab 403.
+            'https://besar.indrabet788.life/register': { status: 403, body: 'Just a moment...' },
+            'https://dkwl.b-cdn.net/favicon.ico': { status: 404 },
+        })
+
+        const response = await panel(client)
+            .post('/api/v1/domains')
+            .json({ url: 'dkwl.b-cdn.net/d/indrabet-kl2/register' })
+            .withCsrfToken()
+            .loginAs(await createUser())
+
+        response.assertStatus(201)
+        response.assertBodyContains({
+            data: {
+                url: 'https://dkwl.b-cdn.net/d/indrabet-kl2/register',
+                host: 'dkwl.b-cdn.net',
+                title: 'indrabet-kl2 / register',
+                description: 'Link menuju besar.indrabet788.life.',
+                crawl_status: 'pending',
+            },
+        })
+        assert.lengthOf(await queuedCrawlDomainIds(), 1)
+    })
+
+    test('tetap menolak link pengalih yang tujuannya tidak ada', async ({ client, assert }) => {
+        fakeRemoteSites({
+            'https://dkwl.b-cdn.net/lama-kl1': { status: 302, location: 'https://hilang.test/' },
+            'https://hilang.test/': { status: 404, body: 'Not found' },
+            'http://dkwl.b-cdn.net/lama-kl1': { status: 302, location: 'https://hilang.test/' },
+        })
+
+        const response = await panel(client)
+            .post('/api/v1/domains')
+            .json({ url: 'https://dkwl.b-cdn.net/lama-kl1' })
+            .withCsrfToken()
+            .loginAs(await createUser())
+
+        response.assertStatus(422)
+        response.assertBodyContains({
+            errors: {
+                url: [
+                    'Situs tidak dapat dibuka (kode 404). Pastikan link benar dan situs sedang aktif.',
+                ],
+            },
+        })
+        assert.lengthOf(await Domain.all(), 0)
+    })
+
     test('menolak link yang sama walau beda skema, huruf, atau garis miring penutup: {$self}')
         .with(['psms.id/players', 'http://psms.id/players', 'https://PSMS.id/players/'])
         .run(async ({ client }, duplicate) => {

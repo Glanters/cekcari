@@ -7,12 +7,7 @@ import type Domain from '#models/domain'
 import Page from '#models/page'
 import DomainCrawler from '#services/domain_crawler'
 import { createDomain } from '#tests/functional/domains/domain_helpers'
-import {
-    fakeDns,
-    fakeRemoteSites,
-    htmlPage,
-    restoreRemoteFakes,
-} from '#tests/fakes/remote_sites'
+import { fakeDns, fakeRemoteSites, htmlPage, restoreRemoteFakes } from '#tests/fakes/remote_sites'
 
 async function crawl(domainId: number) {
     const job = await app.container.make(CrawlDomainJob)
@@ -236,6 +231,30 @@ test.group('Crawler', (group) => {
         assert.equal(domain.crawlStatus, 'redirected')
         assert.equal(domain.redirectedTo, 'https://tujuan-lain.test/')
         assert.deepEqual(await pageUrls(domain.id), [])
+    })
+
+    test('menandai link pengalih ke situs yang memblokir bot sebagai dialihkan tanpa mengubah datanya', async ({
+        assert,
+    }) => {
+        const domain = await createDomain({
+            url: 'https://dkwl.b-cdn.net/mariatogel-kl1',
+            host: 'dkwl.b-cdn.net',
+            title: 'mariatogel-kl1',
+        })
+        fakeRemoteSites({
+            'https://dkwl.b-cdn.net/mariatogel-kl1': {
+                status: 302,
+                location: 'https://dahlia.mariatogel788.life/',
+            },
+            'https://dahlia.mariatogel788.life/': { status: 403, body: 'Just a moment...' },
+        })
+
+        await crawl(domain.id)
+
+        await domain.refresh()
+        assert.equal(domain.crawlStatus, 'redirected')
+        assert.equal(domain.redirectedTo, 'https://dahlia.mariatogel788.life/')
+        assert.equal(domain.title, 'mariatogel-kl1')
     })
 
     test('menghapus catatan pengalihan setelah link kembali bisa dibaca', async ({ assert }) => {

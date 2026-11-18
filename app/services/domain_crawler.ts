@@ -12,16 +12,12 @@ import RemotePageFetcher from '#services/remote_page_fetcher'
 import RobotsRules from '#services/robots_rules'
 import UrlResolver from '#services/url_resolver'
 import { sliceChars } from '#support/characters'
-import { originOf } from '#support/site_address'
+import { isSameSite, originOf } from '#support/site_address'
 
 const MAX_URL_LENGTH = 2048
 const MAX_TITLE_LENGTH = 255
 
 type CrawledPage = { url: string; links: string[] }
-
-function hostWithoutWww(url: string): string {
-    return (URL.parse(url)?.hostname ?? '').toLowerCase().replace(/^www\./, '')
-}
 
 @inject()
 export default class DomainCrawler {
@@ -114,7 +110,7 @@ export default class DomainCrawler {
 
         // Bila halaman yang didaftarkan sendiri pindah ke domain lain, tidak ada yang bisa ditelusuri;
         // laporkan tujuannya supaya pemilik tahu alasannya, alih-alih sekadar "gagal".
-        if (isEntryPage && page.isSuccessful() && !this.isSameSite(page.url, domain.host)) {
+        if (isEntryPage && page.isSuccessful() && !isSameSite(page.url, domain.host)) {
             throw new SiteRedirectedException(page.url)
         }
 
@@ -167,12 +163,8 @@ export default class DomainCrawler {
     }
 
     // "www.contoh.com" dan "contoh.com" dianggap situs yang sama karena umumnya saling mengalihkan.
-    private isSameSite(url: string, host: string): boolean {
-        return hostWithoutWww(url) === host.toLowerCase().replace(/^www\./, '')
-    }
-
     private isInScope(url: string, domain: Domain): boolean {
-        if (!this.isSameSite(url, domain.host)) {
+        if (!isSameSite(url, domain.host)) {
             return false
         }
 

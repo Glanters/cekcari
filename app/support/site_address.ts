@@ -20,6 +20,16 @@ export function entryUrlOf(url: string): string {
 }
 
 /**
+ * Apakah url masih berada di situs yang didaftarkan; "www." dianggap situs yang sama.
+ * Menerima url apa pun (mis. tujuan redirect), jadi url yang tidak valid dianggap situs lain.
+ */
+export function isSameSite(url: string, host: string): boolean {
+    const urlHost = (URL.parse(url)?.hostname ?? '').toLowerCase().replace(/^www\./, '')
+
+    return urlHost === host.toLowerCase().replace(/^www\./, '')
+}
+
+/**
  * Alamat pembanding keunikan: link tanpa skema, sehingga http://x/a dan https://x/a dianggap sama.
  * Harus sama dengan ekspresi indeks unik domains_address_unique.
  */
