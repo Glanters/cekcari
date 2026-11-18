@@ -1,7 +1,7 @@
 # Memasang di server uji (cari.salahmu.fun)
 
-Panduan memasang CekCari di server Ubuntu 22.04/24.04 dengan dua domain lewat **Cloudflare Tunnel**
-(DNS salahmu.fun sudah di Cloudflare), sama seperti revenue:
+Panduan memasang CekCari di server Ubuntu 22.04/24.04 dengan dua domain lewat **Nginx + sertifikat**
+(sama seperti hrms; DNS salahmu.fun di Cloudflare):
 
 | Domain | Isi |
 |---|---|
@@ -12,7 +12,7 @@ Yang berjalan di server, semuanya lewat PM2:
 
 | Proses | Isi |
 |---|---|
-| `cekcari-web` | Aplikasi web (port yang masih kosong, mis. 3345; hanya localhost; publik lewat tunnel) |
+| `cekcari-web` | Aplikasi web (port yang masih kosong, mis. 3345; hanya localhost; publik lewat Nginx) |
 | `cekcari-queue` | Worker antrean PostgreSQL: crawl situs dan crawl ulang mingguan |
 
 Server uji memakai **login dummy** (Account Center asli belum tersambung) dan **tidak diindeks Google**
@@ -22,7 +22,7 @@ pemilik situs, jadi tidak perlu S3/Spaces.
 ## 1. Paket di server
 
 ```bash
-sudo apt update && sudo apt install -y git postgresql redis-server chrony
+sudo apt update && sudo apt install -y git postgresql redis-server chrony nginx certbot dnsutils
 curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash - && sudo apt install -y nodejs
 sudo npm install -g pm2
 ```
@@ -119,21 +119,47 @@ Hasil yang benar: dua proses `online`, `{"status":"ok"}`, dan `200`. Bila `curl`
 menampilkan aplikasi lain, lihat `pm2 logs cekcari-web --lines 30 --nostream`: pesan `EADDRINUSE`
 berarti port sudah dipakai aplikasi lain, jadi ganti `PORT` di `.env` lalu `pm2 restart ecosystem.config.cjs`.
 
-## 5. Domain lewat Cloudflare Tunnel
+## 5. Domain: Nginx + sertifikat
 
-1. Cloudflare dashboard → **Zero Trust → Networks → Tunnels**. Pakai tunnel server yang sudah ada,
-   atau **Create a tunnel** (Cloudflared) lalu jalankan perintah instal yang diberikan, contoh:
-   ```bash
-   sudo cloudflared service install <TOKEN_DARI_DASHBOARD>
-   ```
-2. Di tunnel itu → **Public Hostname → Add**, dua kali:
-   - Subdomain `cari`, Domain `salahmu.fun`, Service **HTTP**, URL `127.0.0.1:3345`
-   - Subdomain `panel-cari`, Domain `salahmu.fun`, Service **HTTP**, URL `127.0.0.1:3345`
+Satu situs Nginx (`/etc/nginx/sites-available/cekcari`) melayani kedua domain dan meneruskannya ke
+port CekCari; aplikasi membedakan pencarian dan panel dari nama host. Situs lain di server ini tidak
+disentuh dan Nginx tidak pernah dimatikan.
 
-   Tulis `127.0.0.1`, bukan `localhost`: aplikasi hanya mendengarkan di IPv4, sedangkan `localhost`
-   bisa diarahkan ke IPv6.
+**a. DNS di Cloudflare** (salahmu.fun → DNS → Records)
 
-Satu aplikasi melayani kedua domain; aplikasi membedakannya dari nama host.
+- Bila `cari` / `panel-cari` pernah ditambahkan di **Zero Trust → Tunnels → Public Hostname**, hapus
+  keduanya dari tunnel itu dulu. Selama masih di tunnel, domain tetap diarahkan ke layanan tunnel
+  (inilah sebab domain sempat menampilkan aplikasi lain).
+- Buat dua **A record**, Proxy status **Proxied** (awan jingga), ke IP publik server ini
+  (lihat dengan `curl -s https://api.ipify.org`): `cari` dan `panel-cari`.
+
+**b. Origin Certificate Cloudflare** (berlaku 15 tahun, seperti hrms)
+
+SSL/TLS → **Origin Server** → **Create Certificate**, Hostnames: `cari.salahmu.fun`,
+`panel-cari.salahmu.fun` (atau `*.salahmu.fun`), RSA 2048, 15 tahun. Salin ke server:
+
+```bash
+sudo mkdir -p /etc/ssl/cloudflare && sudo chmod 700 /etc/ssl/cloudflare
+sudo nano /etc/ssl/cloudflare/cekcari.pem     # blok "Origin Certificate"
+sudo nano /etc/ssl/cloudflare/cekcari.key     # blok "Private Key"
+sudo chmod 600 /etc/ssl/cloudflare/cekcari.key
+```
+
+Pastikan SSL/TLS → Overview berada pada **Full (strict)**. "Flexible" membuat login panel selalu
+terlempar keluar (cookie sesi ber-flag Secure tidak sampai).
+
+**c. Pasang Nginx**
+
+```bash
+cd /opt/cekcari && sudo bash deploy/setup-domain.sh
+```
+
+Skrip ini membaca domain dan `PORT` dari `.env`, memastikan port itu benar-benar dijawab CekCari
+(berhenti bila tidak), mendeteksi Cloudflare, memasang sertifikat dan pemulihan IP pengunjung
+Cloudflare, lalu me-reload Nginx dan memeriksa kedua domain. Aman dijalankan ulang.
+
+Tanpa Cloudflare (A record DNS only / awan abu-abu) skrip memakai Let's Encrypt sendiri lewat
+`--webroot`; langkah b tidak diperlukan.
 
 ## 6. Setelah online
 
