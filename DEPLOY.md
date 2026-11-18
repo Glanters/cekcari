@@ -12,7 +12,7 @@ Yang berjalan di server, semuanya lewat PM2:
 
 | Proses | Isi |
 |---|---|
-| `cekcari-web` | Aplikasi web (port 3340, hanya localhost; publik lewat tunnel) |
+| `cekcari-web` | Aplikasi web (port yang masih kosong, mis. 3345; hanya localhost; publik lewat tunnel) |
 | `cekcari-queue` | Worker antrean PostgreSQL: crawl situs dan crawl ulang mingguan |
 
 Server uji memakai **login dummy** (Account Center asli belum tersambung) dan **tidak diindeks Google**
@@ -47,12 +47,21 @@ cd /opt/cekcari && npm ci
 cp .env.example .env && node ace generate:key && nano .env
 ```
 
-Ubah isi `.env` menjadi seperti ini (APP_KEY sudah diisi oleh `generate:key`):
+Server ini juga menjalankan aplikasi lain (revenue, LiveChat Audit, hrms), jadi pilih port yang
+masih kosong. Perintah berikut tidak boleh mencetak apa pun untuk port yang dipilih (contoh 3345):
+
+```bash
+sudo ss -ltnp | grep ':3345 '
+```
+
+Ubah isi `.env` menjadi seperti ini (APP_KEY sudah diisi oleh `generate:key`). **Semua** baris di
+bawah wajib diubah, termasuk `PORT`; nilai bawaan `.env.example` (port 3333, domain localhost)
+hanya untuk komputer pengembangan:
 
 ```ini
 NODE_ENV=production
 HOST=127.0.0.1
-PORT=3340
+PORT=3345
 LOG_LEVEL=info
 
 SEARCH_DOMAIN=cari.salahmu.fun
@@ -102,11 +111,13 @@ Cek:
 
 ```bash
 pm2 status
-curl -s -H "Host: cari.salahmu.fun" http://127.0.0.1:3340/up
-curl -s -o /dev/null -w "%{http_code}\n" -H "Host: panel-cari.salahmu.fun" http://127.0.0.1:3340/masuk
+curl -s -H "Host: cari.salahmu.fun" http://127.0.0.1:3345/up
+curl -s -o /dev/null -w "%{http_code}\n" -H "Host: panel-cari.salahmu.fun" http://127.0.0.1:3345/masuk
 ```
 
-Hasil yang benar: dua proses `online`, `{"status":"ok"}`, dan `200`.
+Hasil yang benar: dua proses `online`, `{"status":"ok"}`, dan `200`. Bila `curl` gagal atau
+menampilkan aplikasi lain, lihat `pm2 logs cekcari-web --lines 30 --nostream`: pesan `EADDRINUSE`
+berarti port sudah dipakai aplikasi lain, jadi ganti `PORT` di `.env` lalu `pm2 restart ecosystem.config.cjs`.
 
 ## 5. Domain lewat Cloudflare Tunnel
 
@@ -116,8 +127,8 @@ Hasil yang benar: dua proses `online`, `{"status":"ok"}`, dan `200`.
    sudo cloudflared service install <TOKEN_DARI_DASHBOARD>
    ```
 2. Di tunnel itu → **Public Hostname → Add**, dua kali:
-   - Subdomain `cari`, Domain `salahmu.fun`, Service **HTTP**, URL `127.0.0.1:3340`
-   - Subdomain `panel-cari`, Domain `salahmu.fun`, Service **HTTP**, URL `127.0.0.1:3340`
+   - Subdomain `cari`, Domain `salahmu.fun`, Service **HTTP**, URL `127.0.0.1:3345`
+   - Subdomain `panel-cari`, Domain `salahmu.fun`, Service **HTTP**, URL `127.0.0.1:3345`
 
    Tulis `127.0.0.1`, bukan `localhost`: aplikasi hanya mendengarkan di IPv4, sedangkan `localhost`
    bisa diarahkan ke IPv6.
