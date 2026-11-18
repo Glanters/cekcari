@@ -1,13 +1,13 @@
 // Service worker CekCari (domain pencarian).
 // - Halaman: ambil dari jaringan dulu; bila offline, tampilkan versi terakhir yang tersimpan.
-// - Berkas statis ber-hash (/build, ikon): ambil dari cache dulu karena isinya tidak pernah berubah.
+// - Berkas statis (/build ber-hash, ikon, huruf): ambil dari cache dulu karena isinya tidak pernah berubah.
 //   Seluruh kode aplikasi pencarian disimpan sejak dipasang (dibaca dari manifest build Vite), sehingga
 //   beranda tetap terbuka offline walau pengunjung baru sekali membuka satu halaman.
 //   Halaman memuat service worker ini dengan ?build=<versi>, jadi setiap build baru memicu pemasangan ulang.
 // - API pencarian: selalu dari jaringan, tidak pernah disimpan, supaya hasil selalu terbaru.
 // Naikkan CACHE_VERSION bila strategi cache berubah; cache lama dihapus saat service worker baru aktif.
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const PAGE_CACHE = `cekcari-pages-${CACHE_VERSION}`;
 const ASSET_CACHE = `cekcari-assets-${CACHE_VERSION}`;
 const OFFLINE_FALLBACK_URL = '/';
@@ -20,6 +20,9 @@ const PRECACHE_URLS = [
     '/images/brand/cekcari-logo-128.png',
     '/images/brand/cekcari-logo-256.png',
     '/favicon-32x32.png',
+    '/fonts/dm-sans-latin.woff2',
+    '/fonts/space-grotesk-latin.woff2',
+    '/fonts/jetbrains-mono-latin.woff2',
 ];
 
 // Menelusuri entri aplikasi pencarian beserta semua import & import dinamis (halaman lazy) di manifest Vite.
@@ -109,6 +112,7 @@ function isStaticAsset(url) {
     return (
         url.pathname.startsWith('/build/') ||
         url.pathname.startsWith('/images/brand/') ||
+        url.pathname.startsWith('/fonts/') ||
         /^\/favicon|^\/apple-touch-icon/.test(url.pathname)
     );
 }

@@ -1,4 +1,3 @@
-{{-- Keluarga dan ketebalan huruf mengikuti resources/css/app.css (--font-sans, --font-display, --font-mono). --}}
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+{{-- Huruf disimpan di server sendiri (public/fonts, @font-face di resources/css/app.css): tanpa sambungan
+     tambahan ke Google Fonts sebelum teks bisa tampil. Hanya huruf teks utama yang dimuat lebih awal. --}}
+<link rel="preload" href="/fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin>

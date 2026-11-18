@@ -56,7 +56,8 @@ test.group('SEO dan kerangka halaman', (group) => {
         const response = await search(client).get('/')
         const html = response.text()
 
-        assert.include(html, 'https://fonts.googleapis.com/css2?family=DM+Sans')
+        assert.include(html, '<link rel="preload" href="/fonts/dm-sans-latin.woff2"')
+        assert.notInclude(html, 'fonts.googleapis.com')
         assert.include(html, 'resources/js/search.js')
         assert.include(html, 'resources/css/app.css')
         assert.include(html, '<div id="app"></div>')

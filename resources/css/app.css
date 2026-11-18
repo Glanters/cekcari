@@ -4,6 +4,37 @@
 @source '../js/**/*.{vue,js}';
 
 /*
+ * Huruf variabel (subset latin) dari Google Fonts, disimpan di public/fonts beserta lisensi OFL-nya.
+ * Satu berkas per keluarga mencakup semua ketebalan yang dipakai. Karakter di luar latin memakai huruf sistem.
+ */
+@font-face {
+    font-family: 'DM Sans';
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url('/fonts/dm-sans-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'Space Grotesk';
+    font-style: normal;
+    font-weight: 500 700;
+    font-display: swap;
+    src: url('/fonts/space-grotesk-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    font-style: normal;
+    font-weight: 400 500;
+    font-display: swap;
+    src: url('/fonts/jetbrains-mono-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/*
  * Satu-satunya sumber warna, huruf, bayangan, dan gerak aplikasi CekCari.
  * Identitas: hitam hangat + aksen emas; Space Grotesk untuk judul, DM Sans untuk teks.
  */
@@ -197,14 +228,6 @@
 /* Elemen melayang di bawah tidak tertutup garis "home" iPhone saat aplikasi terpasang (PWA). */
 @utility bottom-safe {
     bottom: max(1rem, env(safe-area-inset-bottom));
-}
-
-@utility animation-delay-1 {
-    animation-delay: 120ms;
-}
-
-@utility animation-delay-2 {
-    animation-delay: 240ms;
 }
 
 @layer base {

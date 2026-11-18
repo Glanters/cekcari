@@ -9,6 +9,11 @@ export const HIGHLIGHT_END = '⟧'
 
 const TS_QUERY = "websearch_to_tsquery('simple', ?)"
 const FUZZY_THRESHOLD = 0.4
+// Jalan terakhir hanya menampilkan situs yang paling mirip, bukan semua situs yang kebetulan berbagi
+// satu kata umum (mis. ratusan situs bernama "togel ..." untuk pencarian "togel onlen").
+const FUZZY_MAX_RESULTS = 30
+const FUZZY_MAX_WORDS = 6
+const FUZZY_MIN_WORD_LENGTH = 3
 const MAX_RELATED_PAGES = 3
 const HEADLINE_OPTIONS = `StartSel=${HIGHLIGHT_START}, StopSel=${HIGHLIGHT_END}`
 
@@ -39,6 +44,18 @@ type RelatedPageRow = { domain_id: number; url: string; title: string | null; sn
 export type SearchOptions = {
     // false bila pengunjung memilih "cari persis yang saya ketik".
     allowCorrection?: boolean
+}
+
+// Kata pendek (mis. "di", "ke") terlalu banyak miripnya; dipakai hanya bila tidak ada kata lain.
+function fuzzyWords(keyword: string): string[] {
+    const words = (keyword.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).slice(0, FUZZY_MAX_WORDS)
+    const meaningfulWords = words.filter((word) => word.length >= FUZZY_MIN_WORD_LENGTH)
+
+    if (meaningfulWords.length > 0) {
+        return meaningfulWords
+    }
+
+    return words.length > 0 ? words : [keyword]
 }
 
 export default class SearchService {
@@ -145,13 +162,31 @@ export default class SearchService {
     }
 
     // Dipakai bila pencarian persis tidak menemukan apa pun, misalnya karena salah ketik.
+    /**
+     * Setiap kata kunci harus mirip dengan salah satu kata di judul atau alamat situs; skor adalah
+     * rata-rata kemiripan semua kata. Hanya FUZZY_MAX_RESULTS situs termirip yang diambil.
+     */
     private fuzzyQuery(keyword: string): DomainQuery {
-        const similarity =
+        const words = fuzzyWords(keyword)
+        const wordSimilarity =
             'greatest(word_similarity(?, domains.title), word_similarity(?, domains.host))'
+        const score = `(${words.map(() => wordSimilarity).join(' + ')}) / ${words.length}`
+        const scoreBindings = words.flatMap((word) => [word, word])
+
+        const closest = this.baseQuery().clearSelect().select('domains.id')
+
+        for (const word of words) {
+            closest.whereRaw(`${wordSimilarity} > ?`, [word, word, FUZZY_THRESHOLD])
+        }
+
+        closest
+            .orderByRaw(`${score} DESC`, scoreBindings)
+            .orderBy('domains.id', 'asc')
+            .limit(FUZZY_MAX_RESULTS)
 
         return this.baseQuery()
-            .whereRaw(`${similarity} > ?`, [keyword, keyword, FUZZY_THRESHOLD])
-            .select(db.raw(`${similarity} AS score`, [keyword, keyword]))
+            .whereIn('domains.id', closest)
+            .select(db.raw(`${score} AS score`, scoreBindings))
     }
 
     // Tanpa seed (mis. pemanggil API langsung) hasil diurutkan menurut kecocokan.

@@ -12,8 +12,9 @@ server.use([
 
 router.use([
     () => import('@adonisjs/core/bodyparser_middleware'),
-    () => import('@adonisjs/session/session_middleware'),
-    () => import('@adonisjs/shield/shield_middleware'),
+    // Sesi dan CSRF hanya di panel; domain pencarian publik tanpa cookie (lihat kedua middleware ini).
+    () => import('#middleware/panel_session_middleware'),
+    () => import('#middleware/domain_shield_middleware'),
     () => import('@adonisjs/auth/initialize_auth_middleware'),
 ])
 

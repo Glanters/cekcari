@@ -217,12 +217,7 @@ watch(
                     </section>
 
                     <ol class="mt-1 divide-y divide-ink-200/80" aria-label="Hasil pencarian">
-                        <li
-                            v-for="(result, index) in results"
-                            :key="result.id"
-                            class="motion-safe:animate-rise"
-                            :class="{ 'motion-safe:animation-delay-1': index === 1, 'motion-safe:animation-delay-2': index >= 2 }"
-                        >
+                        <li v-for="result in results" :key="result.id">
                             <ResultCard :result="result" :markers="markers" is-tracked />
                         </li>
                     </ol>

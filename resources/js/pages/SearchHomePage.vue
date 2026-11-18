@@ -38,7 +38,8 @@ function search(keyword) {
                 <AppLogo size="lg" tone="light" />
             </div>
 
-            <div class="mt-12 w-full max-w-2xl motion-safe:animate-rise motion-safe:animation-delay-1 sm:mt-14 lg:max-w-3xl">
+            <!-- Kolom pencarian tampil seketika (tanpa animasi masuk): langsung bisa diketik begitu halaman terbuka. -->
+            <div class="mt-12 w-full max-w-2xl sm:mt-14 lg:max-w-3xl">
                 <SearchBox v-model:query="query" size="lg" is-autofocus @submit="search" />
             </div>
         </div>

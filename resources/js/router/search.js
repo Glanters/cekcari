@@ -1,15 +1,19 @@
 import { createRouter, createWebHistory } from 'vue-router';
+// Beranda dan hasil pencarian ikut di bundel utama: halaman pertama tampil tanpa menunggu
+// unduhan potongan kode kedua. Hanya halaman 404 yang jarang dibuka dimuat belakangan.
+import SearchHomePage from '@/pages/SearchHomePage.vue';
+import SearchResultsPage from '@/pages/SearchResultsPage.vue';
 
 const routes = [
     {
         path: '/',
         name: 'home',
-        component: () => import('@/pages/SearchHomePage.vue'),
+        component: SearchHomePage,
     },
     {
         path: '/cari',
         name: 'search',
-        component: () => import('@/pages/SearchResultsPage.vue'),
+        component: SearchResultsPage,
         meta: { title: 'Hasil pencarian' },
     },
     {

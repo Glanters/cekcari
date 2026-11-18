@@ -6,8 +6,8 @@ const shieldConfig = defineConfig({
         directives: {
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'", '@nonce', '@viteUrl'],
-            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', '@viteUrl'],
-            fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+            styleSrc: ["'self'", "'unsafe-inline'", '@viteUrl'],
+            fontSrc: ["'self'", 'data:'],
             // Logo situs dimuat langsung dari domain pemiliknya, jadi alamat gambar luar diizinkan (hanya gambar).
             imgSrc: ["'self'", 'data:', 'https:', 'http:'],
             connectSrc: ["'self'", '@viteUrl', 'ws:', 'wss:'],
@@ -23,8 +23,9 @@ const shieldConfig = defineConfig({
     // SPA mengirim token dari cookie XSRF-TOKEN lewat header X-XSRF-TOKEN (axios melakukannya otomatis).
     csrf: {
         enabled: true,
-        // Pencatat kunjungan/klik dikirim lewat sendBeacon (tanpa header CSRF) dan tidak memakai sesi siapa pun.
-        exceptRoutes: ['/api/v1/visits', '/api/v1/domain-clicks'],
+        // Domain pencarian (termasuk pencatat kunjungan/klik via sendBeacon) memakai Shield tanpa CSRF;
+        // lihat app/middleware/domain_shield_middleware.ts.
+        exceptRoutes: [],
         enableXsrfCookie: true,
         methods: ['POST', 'PUT', 'PATCH', 'DELETE'],
     },

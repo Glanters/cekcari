@@ -3,7 +3,7 @@ import testUtils from '@adonisjs/core/services/test_utils'
 import limiter from '@adonisjs/limiter/services/main'
 import { search } from '#tests/helpers'
 import SpellingCorrector from '#services/spelling_corrector'
-import { attachTag, createDomain, softDelete } from '#tests/functional/search/fixtures'
+import { attachTag, createDomain, createDomains, softDelete } from '#tests/functional/search/fixtures'
 
 test.group('Koreksi salah ketik', (group) => {
     group.each.setup(() => testUtils.db().withGlobalTransaction())
@@ -64,6 +64,27 @@ test.group('Koreksi salah ketik', (group) => {
         response.assertBodyContains({
             data: { corrected_query: null, is_fuzzy: true, items: [{ host: 'latoto.com' }] },
         })
+    })
+
+    test('nama mirip harus cocok untuk setiap kata, bukan cukup satu kata umum', async ({ client }) => {
+        await createDomains(3, { title: 'Togel Jaya' })
+        await createDomain({ title: 'Togel Online Resmi', host: 'togelonline.id' })
+
+        const response = await search(client).get('/api/v1/search-results?q=togel%20onlenn&exact=true')
+
+        response.assertStatus(200)
+        response.assertBodyContains({
+            data: { is_fuzzy: true, pagination: { total: 1 }, items: [{ host: 'togelonline.id' }] },
+        })
+    })
+
+    test('nama mirip hanya menampilkan 30 situs termirip', async ({ client }) => {
+        await createDomains(35, { title: 'Latoto Resmi' })
+
+        const response = await search(client).get('/api/v1/search-results?q=latotto&exact=true')
+
+        response.assertStatus(200)
+        response.assertBodyContains({ data: { is_fuzzy: true, pagination: { total: 30 } } })
     })
 
     test('pencarian yang sudah benar tidak membawa koreksi', async ({ client }) => {

@@ -73,6 +73,27 @@ export function serviceWorkerUrl(moduleUrl = import.meta.url) {
     return `/sw.js?build=${encodeURIComponent(buildVersion)}`;
 }
 
+// Service worker langsung mengunduh seluruh kode aplikasi untuk offline. Dipasang saat browser
+// senggang supaya unduhan itu tidak berebut jaringan dengan halaman yang sedang dibuka pengunjung.
+const IDLE_FALLBACK_MS = 3000;
+
+function whenIdle(callback) {
+    if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(callback, { timeout: IDLE_FALLBACK_MS });
+
+        return;
+    }
+
+    window.setTimeout(callback, IDLE_FALLBACK_MS);
+}
+
+function registerServiceWorker() {
+    navigator.serviceWorker.register(serviceWorkerUrl()).catch(() => {
+        // Tanpa service worker situs tetap berjalan normal, hanya tidak bisa dipakai offline.
+        return null;
+    });
+}
+
 export function setupPwa() {
     window.addEventListener('beforeinstallprompt', (event) => {
         event.preventDefault();
@@ -84,11 +105,6 @@ export function setupPwa() {
     });
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register(serviceWorkerUrl()).catch(() => {
-                // Tanpa service worker situs tetap berjalan normal, hanya tidak bisa dipakai offline.
-                return null;
-            });
-        });
+        window.addEventListener('load', () => whenIdle(registerServiceWorker));
     }
 }

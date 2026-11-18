@@ -59,7 +59,7 @@ Prasyarat: Node.js 24+, Docker.
 
 ## Riwayat pencarian dan statistik
 
-- **Salah ketik**: bila kata kunci tidak menemukan apa pun, kata yang salah ketik dikoreksi ke kata yang benar-benar ada di CekCari (judul, alamat, deskripsi situs yang masih terdaftar, dan tag) dan hasilnya langsung ditampilkan dengan keterangan "Menampilkan hasil untuk …" serta tautan "Cari … saja" (`persis=1`, tanpa koreksi). Bila koreksi pun tidak menemukan apa pun, ditampilkan situs dengan nama yang mirip.
+- **Salah ketik**: bila kata kunci tidak menemukan apa pun, kata yang salah ketik dikoreksi ke kata yang benar-benar ada di CekCari (judul, alamat, deskripsi situs yang masih terdaftar, dan tag) dan hasilnya langsung ditampilkan dengan keterangan "Menampilkan hasil untuk …" serta tautan "Cari … saja" (`persis=1`, tanpa koreksi). Bila koreksi pun tidak menemukan apa pun, ditampilkan situs dengan nama yang mirip: setiap kata kunci harus mirip dengan kata di judul atau alamat situs, dan hanya 30 situs termirip yang diambil.
 - **Saran di kolom pencarian** hanya berisi riwayat pencarian pengunjung itu sendiri (maks. 10, disimpan di browsernya, bisa dihapus per entri). Tidak dikirim ke server, jadi pengunjung lain tidak pernah melihatnya.
 - **Statistik** (menu Statistik di panel, rentang hari ini / 7 hari / 30 hari / semua, jam Indonesia):
   - Superadmin: jumlah pengunjung (per browser), kunjungan (halaman yang dibuka), klik ke situs, dan klik per situs semua member.
@@ -81,6 +81,15 @@ Saat go-live di cekcari.com:
 3. Daftarkan `https://cekcari.com` di [Google Search Console](https://search.google.com/search-console), salin kode verifikasi ke `GOOGLE_SITE_VERIFICATION`, lalu kirim `https://cekcari.com/sitemap.xml`.
 4. Jangan daftarkan domain panel di Search Console.
 
+## Kecepatan dan cache
+
+- Huruf (DM Sans, Space Grotesk, JetBrains Mono; subset latin, lisensi OFL) disimpan di `public/fonts` dan dimuat dari server sendiri, tanpa Google Fonts. DM Sans dimuat lebih awal (`preload`). Bila hurufnya diganti, ganti juga nama berkasnya karena browser menyimpannya 30 hari.
+- `Cache-Control` diatur di `config/static.ts`: `/build/*` (nama ber-hash) disimpan setahun (`immutable`), `/build/manifest.json` dan `/sw.js` selalu `no-cache`, `/fonts/*` 30 hari.
+- Beranda dan halaman hasil pencarian ikut di bundel utama (tanpa unduhan potongan kode kedua); service worker dipasang saat browser senggang supaya unduhan offline-nya tidak berebut jaringan dengan halaman pertama.
+- Domain pencarian tidak memakai sesi maupun cookie CSRF (`app/middleware/panel_session_middleware.ts`, `app/middleware/domain_shield_middleware.ts`): tidak ada login di sana, dan halaman tanpa cookie lebih mudah di-cache CDN. Header keamanan (CSP, X-Frame-Options, HSTS, nosniff) tetap dikirim.
+- Logo situs dimuat dengan `referrerpolicy="no-referrer"`, `loading="lazy"`, dan ukuran tetap, karena sebagian situs menolak gambar yang diminta dari domain lain.
+- **Cloudflare**: atur *Caching → Browser Cache TTL* ke **Respect Existing Headers** (bawaannya menimpa menjadi 4 jam), dan matikan *Managed robots.txt* agar `robots.txt` dari aplikasi yang dipakai.
+
 ## Aplikasi terpasang (PWA)
 
 Domain pencarian bisa dipasang ke layar utama ponsel dan dibuka seperti aplikasi (tanpa bilah alamat). Panel pemilik sengaja tidak dijadikan PWA.
@@ -96,7 +105,7 @@ Catatan:
 
 - Service worker didaftarkan sebagai `/sw.js?build=<nama berkas build>`, sehingga **setiap `npm run build` otomatis memicu pembaruan** di browser pengunjung. Berkas build lama dibuang dari cache. Tidak perlu mengubah `sw.js` saat merilis kode baru.
 - Naikkan `CACHE_VERSION` di `public/sw.js` hanya bila strategi cache-nya sendiri diubah.
-- PWA hanya aktif di HTTPS (atau `localhost`). Web server production jangan menyimpan `sw.js` di cache terlalu lama (mis. `Cache-Control: no-cache` untuk `/sw.js`).
+- PWA hanya aktif di HTTPS (atau `localhost`). Aplikasi sudah mengirim `Cache-Control: no-cache` untuk `/sw.js`; jangan ditimpa di web server atau CDN.
 - Pemasangan di Android hanya bisa diuji di Chrome sungguhan atau ponsel; browser bawaan editor tidak memunculkan dialog pemasangan.
 
 ## Login: Account Center, aktivasi, dan 2FA
