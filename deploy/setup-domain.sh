@@ -117,21 +117,31 @@ for domain in "${DOMAINS[@]}"; do
         gagal "$domain belum menunjuk ke mana pun. Buat A record ke IP server ini lebih dulu."
 done
 
-if [[ "$MODE" == "auto" ]]; then
-    if curl -sS -I --max-time 10 "http://$SEARCH_DOMAIN" 2>/dev/null | grep -qi '^server:.*cloudflare'; then
-        MODE="cloudflare"
-        info "Cloudflare terdeteksi di depan $SEARCH_DOMAIN."
-    else
-        MODE="letsencrypt"
-        info "Domain menunjuk langsung ke server — jalur Let's Encrypt."
-    fi
+# Di belakang Cloudflare (awan jingga) atau tidak — terlepas dari jenis sertifikatnya, karena
+# pemulihan IP pengunjung tetap diperlukan bila lalu lintas lewat Cloudflare.
+BEHIND_CLOUDFLARE=false
+if curl -sS -I --max-time 10 "http://$SEARCH_DOMAIN" 2>/dev/null | grep -qi '^server:.*cloudflare'; then
+    BEHIND_CLOUDFLARE=true
+    info "Cloudflare terdeteksi di depan $SEARCH_DOMAIN."
 fi
 
-# Hostname yang masih terdaftar di Cloudflare Tunnel tidak pernah sampai ke nginx ini.
-if [[ "$MODE" == "cloudflare" ]]; then
+if [[ "$MODE" == "auto" ]]; then
+    [[ "$BEHIND_CLOUDFLARE" == "true" ]] && MODE="cloudflare" || MODE="letsencrypt"
+fi
+
+if [[ "$BEHIND_CLOUDFLARE" == "true" ]]; then
+    # Hostname yang masih terdaftar di Cloudflare Tunnel tidak pernah sampai ke nginx ini.
     kuning "Pastikan $SEARCH_DOMAIN dan $PANEL_DOMAIN TIDAK lagi ada di Public Hostname Cloudflare Tunnel,"
-    kuning "dan DNS-nya berupa A record (awan jingga) ke IP server ini. Selama masih di tunnel,"
-    kuning "domain tetap diarahkan ke layanan yang tercatat di tunnel itu, bukan ke nginx ini."
+    kuning "dan DNS-nya berupa A record ke IP server ini. Selama masih di tunnel, domain tetap"
+    kuning "diarahkan ke layanan yang tercatat di tunnel itu (aplikasi lain), bukan ke nginx ini."
+else
+    IP_SERVER="$(curl -fsS --max-time 10 https://api.ipify.org 2>/dev/null || echo '')"
+    for domain in "${DOMAINS[@]}"; do
+        IP_DOMAIN="$(dig +short "$domain" A | tail -n1)"
+        if [[ -n "$IP_SERVER" && "$IP_DOMAIN" != "$IP_SERVER" ]]; then
+            kuning "PERINGATAN: $domain menunjuk $IP_DOMAIN, sedangkan IP server ini $IP_SERVER."
+        fi
+    done
 fi
 
 # ------------------------------------------------------------------ sertifikat
@@ -181,16 +191,6 @@ else
 
     command -v certbot >/dev/null 2>&1 || gagal "\`certbot\` tidak ada. Pasang lebih dulu:  sudo apt install certbot"
 
-    IP_SERVER="$(curl -fsS --max-time 10 https://api.ipify.org 2>/dev/null || echo '')"
-    for domain in "${DOMAINS[@]}"; do
-        IP_DOMAIN="$(dig +short "$domain" A | tail -n1)"
-        if [[ -n "$IP_SERVER" && "$IP_DOMAIN" != "$IP_SERVER" ]]; then
-            merah "PERINGATAN: $domain menunjuk $IP_DOMAIN, sedangkan IP server ini $IP_SERVER."
-            read -rp "Lanjutkan? [y/N] " jawab
-            [[ "$jawab" == "y" || "$jawab" == "Y" ]] || exit 1
-        fi
-    done
-
     # Sertifikat yang sudah ada tidak diminta ulang: jatah Let's Encrypt 5 penerbitan per pekan.
     if [[ -f "$JALUR_CERT" ]]; then
         info "Sertifikat CekCari sudah ada — tidak diminta ulang."
@@ -202,7 +202,6 @@ else
 # Sementara — hanya melayani tantangan ACME sampai sertifikat terbit (deploy/setup-domain.sh).
 server {
     listen 80;
-    listen [::]:80;
     server_name ${DOMAINS[*]};
 
     location ^~ /.well-known/acme-challenge/ {
@@ -221,10 +220,21 @@ KONFIG
 
         if ! certbot certonly --webroot -w "$WEBROOT_ACME" --non-interactive --agree-tos \
             --register-unsafely-without-email --cert-name "$NAMA_SITUS" \
+            --deploy-hook "systemctl reload nginx" \
             -d "$SEARCH_DOMAIN" -d "$PANEL_DOMAIN"; then
             rm -f "/etc/nginx/sites-enabled/$NAMA_SITUS.acme" "$SEMENTARA"
             systemctl reload nginx || true
-            gagal "Penerbitan sertifikat gagal. Periksa /var/log/letsencrypt/letsencrypt.log."
+            merah "Penerbitan sertifikat gagal. Detail: /var/log/letsencrypt/letsencrypt.log"
+            cat <<PETUNJUK
+
+Penyebab yang paling sering:
+  - Domain masih di Public Hostname Cloudflare Tunnel → hapus dari tunnel.
+  - DNS belum berupa A record ke IP server ini → buat A record \`cari\` dan \`panel-cari\`.
+  - Domain diproksi Cloudflare (awan jingga) dengan "Always Use HTTPS" → ubah kedua record ke
+    "DNS only" (awan abu-abu), jalankan ulang, lalu boleh dikembalikan ke Proxied dengan
+    SSL/TLS "Full (strict)".
+PETUNJUK
+            exit 1
         fi
 
         rm -f "/etc/nginx/sites-enabled/$NAMA_SITUS.acme" "$SEMENTARA"
@@ -256,7 +266,7 @@ sed -e "s|__SEARCH_DOMAIN__|$SEARCH_DOMAIN|g" \
     -e "s|__SSL_CERTIFICATE_KEY__|$JALUR_KEY|g" \
     "$TEMPLAT" >"$SITE_TERSEDIA"
 
-if [[ "$MODE" == "cloudflare" ]]; then
+if [[ "$BEHIND_CLOUDFLARE" == "true" ]]; then
     if [[ ! -f /etc/nginx/cloudflare-realip.conf ]]; then
         info "Menyusun daftar rentang Cloudflare …"
         "$AKAR/deploy/cloudflare-realip.sh" || gagal "Daftar rentang Cloudflare gagal disusun."
