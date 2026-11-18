@@ -182,15 +182,11 @@
 }
 
 /*
- * Ciri khas CekCari: kata yang cocok ditandai goresan stabilo emas di bagian bawah huruf,
- * seperti mencentang temuan, bukan kotak kuning penuh.
+ * Kata yang cocok cukup ditebalkan tanpa warna latar, agar judul dan deskripsi tetap bersih dibaca.
  */
 @utility highlight-marker {
-    background-image: linear-gradient(transparent 60%, rgb(233 195 90 / 0.6) 60%, rgb(233 195 90 / 0.6) 92%, transparent 92%);
-    box-decoration-break: clone;
     color: var(--color-ink-950);
     font-weight: 600;
-    padding-inline: 0.08em;
 }
 
 /* Dialog tidak pernah lebih tinggi dari layar (sisakan 1rem atas-bawah); isinya bisa digulir. */
