@@ -1,0 +1,222 @@
+@import 'tailwindcss';
+
+@source '../../storage/framework/views/*.php';
+@source '../js/**/*.{vue,js}';
+
+/*
+ * Satu-satunya sumber warna, huruf, bayangan, dan gerak aplikasi CekCari.
+ * Identitas: hitam hangat + aksen emas; Space Grotesk untuk judul, DM Sans untuk teks.
+ */
+@theme {
+    --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    --font-display: 'Space Grotesk', 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+    /* Khusus alamat situs dan data kecil: alamat dibaca seperti alamat, bukan seperti kalimat. */
+    --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
+
+    --color-canvas: #faf8f3;
+    --color-surface: #ffffff;
+
+    --color-ink-50: #fafaf9;
+    --color-ink-100: #f5f5f4;
+    --color-ink-200: #e7e5e4;
+    --color-ink-300: #d6d3d1;
+    --color-ink-400: #a8a29e;
+    --color-ink-500: #78716c;
+    --color-ink-600: #57534e;
+    --color-ink-700: #44403c;
+    --color-ink-800: #292524;
+    --color-ink-900: #1c1917;
+    --color-ink-950: #0c0a09;
+
+    --color-brand-50: #fdf9ec;
+    --color-brand-100: #f9efcb;
+    --color-brand-200: #f2dc93;
+    --color-brand-300: #e9c35a;
+    --color-brand-400: #ddaa34;
+    --color-brand-500: #c98f1c;
+    --color-brand-600: #a16207;
+    --color-brand-700: #85500d;
+    --color-brand-800: #6d4112;
+    --color-brand-900: #5c3714;
+
+    --color-success-50: #effcf3;
+    --color-success-600: #198a4a;
+    --color-success-700: #166d3c;
+    --color-warning-50: #fff8eb;
+    --color-warning-600: #b86e09;
+    --color-warning-700: #93540b;
+    --color-danger-50: #fff1f1;
+    /* Merah terang untuk pesan galat di atas latar gelap (kontras ≥ 4.5:1 terhadap ink-950). */
+    --color-danger-300: #f6a3a3;
+    --color-danger-600: #cf3434;
+    --color-danger-700: #a82626;
+
+    --shadow-search: 0 1px 2px rgb(28 25 23 / 0.06), 0 8px 24px -6px rgb(28 25 23 / 0.12);
+    --shadow-search-focus: 0 1px 2px rgb(28 25 23 / 0.08), 0 14px 36px -8px rgb(161 98 7 / 0.28);
+    --shadow-popover: 0 12px 32px -8px rgb(28 25 23 / 0.22);
+    --shadow-glass: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 20px 50px -20px rgb(0 0 0 / 0.7);
+    --shadow-glow: 0 0 0 1px rgb(221 170 52 / 0.35), 0 18px 60px -12px rgb(221 170 52 / 0.35);
+    --shadow-card: 0 1px 2px rgb(28 25 23 / 0.04), 0 4px 16px -8px rgb(28 25 23 / 0.08);
+    --shadow-card-hover: 0 1px 2px rgb(28 25 23 / 0.05), 0 18px 40px -16px rgb(28 25 23 / 0.2);
+
+    --animate-fade-in: fade-in 150ms ease-out;
+    --animate-slide-up: slide-up 200ms ease-out;
+    --animate-rise: rise 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    --animate-orbit: orbit 32s linear infinite;
+    --animate-lens-in: lens-in 1400ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+
+    @keyframes orbit {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    @keyframes lens-in {
+        from {
+            opacity: 0;
+            transform: scale(0.92);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    @keyframes fade-in {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    @keyframes slide-up {
+        from {
+            opacity: 0;
+            transform: translateY(6px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes rise {
+        from {
+            opacity: 0;
+            transform: translateY(14px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+}
+
+/* Baris chip kategori tetap bisa digeser tanpa menampilkan scrollbar. */
+@utility scrollbar-none {
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+/* Latar gelap halaman pengunjung: cahaya emas lembut di tengah atas. */
+@utility bg-hero {
+    background-color: var(--color-ink-950);
+    background-image:
+        radial-gradient(60% 45% at 50% 30%, rgb(221 170 52 / 0.16), transparent 70%),
+        radial-gradient(40% 35% at 85% 90%, rgb(161 98 7 / 0.12), transparent 70%);
+}
+
+/* Kisi tipis yang memudar ke tepi, memberi kesan presisi tanpa mengganggu konten. */
+@utility bg-grid-fade {
+    background-image:
+        linear-gradient(to right, rgb(255 255 255 / 0.045) 1px, transparent 1px),
+        linear-gradient(to bottom, rgb(255 255 255 / 0.045) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 20%, transparent 75%);
+}
+
+/*
+ * Lensa besar di belakang pencarian beranda — ciri khas CekCari yang diambil dari logonya.
+ * Kaca tipis dengan bingkai emas; kisi di belakangnya tampak sedikit lebih terang, seperti dilihat lewat lensa.
+ */
+@utility lens-glass {
+    border-radius: 9999px;
+    border: 1px solid rgb(221 170 52 / 0.22);
+    background-image: radial-gradient(circle at 50% 42%, rgb(255 255 255 / 0.045), rgb(255 255 255 / 0.012) 55%, transparent 72%);
+    box-shadow:
+        inset 0 0 0 10px rgb(255 255 255 / 0.012),
+        inset 0 0 0 11px rgb(221 170 52 / 0.08),
+        inset 0 30px 80px -40px rgb(255 255 255 / 0.08),
+        0 0 140px -20px rgb(221 170 52 / 0.12);
+}
+
+/* Kilau yang mengitari bingkai lensa; hanya cincin tepinya yang terlihat. */
+@utility lens-glint {
+    border-radius: 9999px;
+    background-image: conic-gradient(from 0deg, transparent 0 62%, rgb(233 195 90 / 0.55) 75%, transparent 86% 100%);
+    mask-image: radial-gradient(farthest-side, transparent calc(100% - 2px), black calc(100% - 1px));
+}
+
+/* Gagang kaca pembesar: keluar dari bingkai lensa pada sudut 45° (titik 50% + 35.36% dari pusat). */
+@utility lens-handle {
+    left: 85.36%;
+    top: 85.36%;
+    width: 22%;
+    height: 14px;
+    border-radius: 9999px;
+    transform-origin: 0 50%;
+    transform: rotate(45deg) translateY(-50%);
+    background-image: linear-gradient(90deg, rgb(221 170 52 / 0.55), rgb(161 98 7 / 0.25) 55%, transparent);
+    box-shadow: 0 0 40px rgb(221 170 52 / 0.15);
+}
+
+@utility text-gold-gradient {
+    background-image: linear-gradient(120deg, var(--color-brand-200), var(--color-brand-400) 55%, var(--color-brand-500));
+    background-clip: text;
+    color: transparent;
+}
+
+/*
+ * Ciri khas CekCari: kata yang cocok ditandai goresan stabilo emas di bagian bawah huruf,
+ * seperti mencentang temuan, bukan kotak kuning penuh.
+ */
+@utility highlight-marker {
+    background-image: linear-gradient(transparent 60%, rgb(233 195 90 / 0.6) 60%, rgb(233 195 90 / 0.6) 92%, transparent 92%);
+    box-decoration-break: clone;
+    color: var(--color-ink-950);
+    font-weight: 600;
+    padding-inline: 0.08em;
+}
+
+/* Dialog tidak pernah lebih tinggi dari layar (sisakan 1rem atas-bawah); isinya bisa digulir. */
+@utility max-h-dialog {
+    max-height: calc(100dvh - 2rem);
+}
+
+/* Elemen melayang di bawah tidak tertutup garis "home" iPhone saat aplikasi terpasang (PWA). */
+@utility bottom-safe {
+    bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+@utility animation-delay-1 {
+    animation-delay: 120ms;
+}
+
+@utility animation-delay-2 {
+    animation-delay: 240ms;
+}
+
+@layer base {
+    :focus-visible {
+        @apply outline-2 outline-offset-2 outline-brand-500;
+    }
+
+    ::selection {
+        @apply bg-brand-200 text-ink-900;
+    }
+}

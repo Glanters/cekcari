@@ -1,0 +1,41 @@
+{
+    "id": "/",
+    "name": "CekCari — Mesin Pencari Situs Indonesia",
+    "short_name": "CekCari",
+    "description": "Cari situs dan halaman web Indonesia dengan cepat di CekCari.",
+    "lang": "id",
+    "dir": "ltr",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "any",
+    "background_color": "#0c0a09",
+    "theme_color": "#0c0a09",
+    "categories": ["search", "utilities"],
+    "icons": [
+        {
+            "src": "/images/brand/pwa-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/images/brand/pwa-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/images/brand/pwa-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/images/brand/pwa-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}
