@@ -149,7 +149,7 @@ Test backend (Japa) memakai database `cekcari_test` dan pengaturan dari `.env.te
 
 Domain: isi `SEARCH_DOMAIN` dan `PANEL_DOMAIN` dengan nama host sebenarnya (tanpa `https://`), arahkan keduanya ke server yang sama. Build: `node ace build`, lalu jalankan `node build/bin/server.js` dan `node build/ace.js queue:work` (mis. lewat PM2).
 
-Panduan pemasangan langkah demi langkah (server uji cari.salahmu.fun, PM2, Cloudflare Tunnel): [DEPLOY.md](DEPLOY.md).
+Panduan pemasangan langkah demi langkah (server uji cari.salahmu.fun, PM2, Nginx + sertifikat): [DEPLOY.md](DEPLOY.md).
 
 Login: `NODE_ENV=production`, `TRUSTED_PROXIES` sesuai proxy di depan aplikasi, `ACCOUNTCENTER_DRIVER=http`, isi `ACCOUNTCENTER_URI`/`_NAME`/`_SECRET` dan `ACCOUNTCENTER_SUPERADMIN_EMAILS`, kosongkan `ACCOUNTCENTER_DUMMY_PASSWORD`. Setelah masa uji, nyalakan 2FA di menu **Keamanan**.
 
