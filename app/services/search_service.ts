@@ -1,6 +1,7 @@
 import db from '@adonisjs/lucid/services/db'
 import type { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
 import Domain from '#models/domain'
+import SpellingCorrector from '#services/spelling_corrector'
 
 // Penanda sorotan sengaja bukan tag HTML agar frontend tidak perlu merender HTML mentah.
 export const HIGHLIGHT_START = '⟦'
@@ -26,6 +27,8 @@ export type SearchOutcome = {
     hits: SearchHit[]
     promoted: SearchHit | null
     isFuzzy: boolean
+    // Kata kunci hasil koreksi salah ketik yang hasilnya sedang ditampilkan, atau null.
+    correctedQuery: string | null
     pagination: { page: number; per_page: number; total: number; last_page: number }
 }
 
@@ -33,20 +36,47 @@ type HeadlineRow = { id: number; title_highlight: string; description_highlight:
 
 type RelatedPageRow = { domain_id: number; url: string; title: string | null; snippet: string }
 
+export type SearchOptions = {
+    // false bila pengunjung memilih "cari persis yang saya ketik".
+    allowCorrection?: boolean
+}
+
 export default class SearchService {
+    private readonly corrector = new SpellingCorrector()
+
     /**
      * Mencari domain yang cocok. Bila seed diisi (dikirim per pengunjung), urutan hasil diacak
      * secara tetap untuk seed itu, sehingga link yang sama tidak selalu di atas tetapi pindah halaman
      * tetap konsisten. Satu link bertanda promosi yang cocok dipilih acak untuk slot teratas dan
      * tidak diulang di daftar biasa.
      */
-    async search(keyword: string, page: number, perPage: number, seed: number | null = null): Promise<SearchOutcome> {
+    async search(
+        keyword: string,
+        page: number,
+        perPage: number,
+        seed: number | null = null,
+        options: SearchOptions = {}
+    ): Promise<SearchOutcome> {
         let matches = this.fullTextQuery(keyword)
+        let effectiveKeyword = keyword
+        let correctedQuery: string | null = null
         let isFuzzy = false
 
+        // Tanpa hasil persis: coba koreksi salah ketik dulu (seperti mesin pencari umum), baru
+        // kemudian situs dengan nama mirip sebagai jalan terakhir.
         if (!(await this.hasAny(matches))) {
-            matches = this.fuzzyQuery(keyword)
-            isFuzzy = true
+            const corrected =
+                options.allowCorrection === false ? null : await this.corrector.correct(keyword)
+            const correctedMatches = corrected ? this.fullTextQuery(corrected) : null
+
+            if (corrected && correctedMatches && (await this.hasAny(correctedMatches))) {
+                matches = correctedMatches
+                effectiveKeyword = corrected
+                correctedQuery = corrected
+            } else {
+                matches = this.fuzzyQuery(keyword)
+                isFuzzy = true
+            }
         }
 
         const promoted = await this.pickPromoted(matches.clone(), seed)
@@ -59,12 +89,16 @@ export default class SearchService {
 
         const paginator = await listing.paginate(page, perPage)
         const pageDomains = paginator.all()
-        const hits = await this.attachHighlights(promoted ? [...pageDomains, promoted] : pageDomains, keyword)
+        const hits = await this.attachHighlights(
+            promoted ? [...pageDomains, promoted] : pageDomains,
+            effectiveKeyword
+        )
 
         return {
             hits: promoted ? hits.slice(0, -1) : hits,
             promoted: promoted ? hits[hits.length - 1] : null,
             isFuzzy,
+            correctedQuery,
             pagination: {
                 page: paginator.currentPage,
                 per_page: paginator.perPage,
@@ -112,7 +146,8 @@ export default class SearchService {
 
     // Dipakai bila pencarian persis tidak menemukan apa pun, misalnya karena salah ketik.
     private fuzzyQuery(keyword: string): DomainQuery {
-        const similarity = 'greatest(word_similarity(?, domains.title), word_similarity(?, domains.host))'
+        const similarity =
+            'greatest(word_similarity(?, domains.title), word_similarity(?, domains.host))'
 
         return this.baseQuery()
             .whereRaw(`${similarity} > ?`, [keyword, keyword, FUZZY_THRESHOLD])
@@ -125,7 +160,9 @@ export default class SearchService {
             return matches.orderBy('score', 'desc').orderBy('domains.id', 'asc')
         }
 
-        return matches.orderByRaw('md5(domains.id::text || ?)', [String(seed)]).orderBy('domains.id', 'asc')
+        return matches
+            .orderByRaw('md5(domains.id::text || ?)', [String(seed)])
+            .orderBy('domains.id', 'asc')
     }
 
     // Garam "promo" membuat pilihan promosi tidak sekadar mengikuti urutan acak daftar biasa.
@@ -136,7 +173,9 @@ export default class SearchService {
             return promotedMatches.orderByRaw('random()').first()
         }
 
-        return promotedMatches.orderByRaw("md5('promo' || domains.id::text || ?)", [String(seed)]).first()
+        return promotedMatches
+            .orderByRaw("md5('promo' || domains.id::text || ?)", [String(seed)])
+            .first()
     }
 
     private async hasAny(matches: DomainQuery): Promise<boolean> {
@@ -192,7 +231,11 @@ export default class SearchService {
                 db.raw(
                     `ts_headline('simple', coalesce(pages.content, pages.description, ''), ${TS_QUERY}, ?) AS snippet,` +
                         ` row_number() OVER (PARTITION BY pages.domain_id ORDER BY ts_rank(pages.search_vector, ${TS_QUERY}) DESC) AS position`,
-                    [keyword, `${HEADLINE_OPTIONS}, MaxWords=30, MinWords=12, MaxFragments=1`, keyword]
+                    [
+                        keyword,
+                        `${HEADLINE_OPTIONS}, MaxWords=30, MinWords=12, MaxFragments=1`,
+                        keyword,
+                    ]
                 )
             )
 
@@ -207,7 +250,10 @@ export default class SearchService {
 
         for (const row of relatedPageRows) {
             const domainId = Number(row.domain_id)
-            relatedPages.set(domainId, [...(relatedPages.get(domainId) ?? []), { url: row.url, title: row.title, snippet: row.snippet }])
+            relatedPages.set(domainId, [
+                ...(relatedPages.get(domainId) ?? []),
+                { url: row.url, title: row.title, snippet: row.snippet },
+            ])
         }
 
         return domains.map((domain) => {

@@ -73,7 +73,10 @@ test.group('API pencarian', (group) => {
         const response = await search(client).get('/api/v1/search-results?q=tokopedya')
 
         response.assertStatus(200)
-        response.assertBodyContains({ data: { is_fuzzy: true, items: [{ id: Number(domain.id) }] } })
+        // Salah ketik dikoreksi ke kata yang ada di CekCari; nama mirip hanya jalan terakhir.
+        response.assertBodyContains({
+            data: { corrected_query: 'tokopedia', is_fuzzy: false, items: [{ id: Number(domain.id) }] },
+        })
     })
 
     test('memvalidasi kata kunci pencarian', async ({ client, assert }) => {

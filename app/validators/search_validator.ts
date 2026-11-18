@@ -3,7 +3,6 @@ import type { ValidationFields } from '@vinejs/vine/types'
 
 export const DEFAULT_PER_PAGE = 10
 export const MAX_PER_PAGE = 50
-export const MIN_SUGGESTION_KEYWORD_LENGTH = 2
 
 // Seed disimpan sebagai integer 32-bit di sisi pengunjung.
 const MAX_SEED = 2147483647
@@ -15,6 +14,8 @@ export const searchResultsValidator = vine.create({
     seed: vine.number().withoutDecimals().min(1).max(MAX_SEED).optional(),
     page: vine.number().withoutDecimals().min(1).optional(),
     per_page: vine.number().withoutDecimals().min(1).max(MAX_PER_PAGE).optional(),
+    // Dipakai link "Cari ... saja": jangan koreksi salah ketik.
+    exact: vine.boolean().optional(),
 })
 
 /**
@@ -22,13 +23,19 @@ export const searchResultsValidator = vine.create({
  * karena pesan global baru terpasang setelah preload selesai.
  */
 export function searchMessages() {
-    return withFieldNames({ q: 'kata kunci', seed: 'seed urutan', per_page: 'jumlah per halaman', page: 'halaman' }, {
-        'q.minLength': '{{ field }} wajib diisi.',
-    })
+    return withFieldNames(
+        { q: 'kata kunci', seed: 'seed urutan', per_page: 'jumlah per halaman', page: 'halaman' },
+        {
+            'q.minLength': '{{ field }} wajib diisi.',
+        }
+    )
 }
 
 function withFieldNames(fields: ValidationFields, overrides: Record<string, string> = {}) {
-    const globalMessages = vine.messagesProvider instanceof SimpleMessagesProvider ? vine.messagesProvider.toJSON().messages : {}
+    const globalMessages =
+        vine.messagesProvider instanceof SimpleMessagesProvider
+            ? vine.messagesProvider.toJSON().messages
+            : {}
 
     return new SimpleMessagesProvider({ ...globalMessages, ...overrides }, fields)
 }

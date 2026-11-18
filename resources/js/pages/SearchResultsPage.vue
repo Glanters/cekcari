@@ -23,12 +23,15 @@ const pagination = ref({ page: 1, per_page: PER_PAGE, total: 0, last_page: 1 });
 const markers = ref({ start: '', end: '' });
 const promoted = ref(null);
 const isFuzzy = ref(false);
+const correctedQuery = ref(null);
 const isLoading = ref(false);
 const errorMessage = ref('');
 let latestRequestId = 0;
 
 const keyword = computed(() => String(route.query.q ?? '').trim());
 const currentPage = computed(() => Math.max(1, Number.parseInt(route.query.halaman, 10) || 1));
+// "Cari ... saja": pengunjung meminta kata yang diketik apa adanya, tanpa koreksi salah ketik.
+const isExact = computed(() => route.query.persis === '1');
 
 async function loadResults() {
     if (keyword.value === '') {
@@ -48,6 +51,7 @@ async function loadResults() {
                 page: currentPage.value,
                 per_page: PER_PAGE,
                 seed: getVisitorSeed(window.sessionStorage),
+                exact: isExact.value ? true : undefined,
             },
         });
 
@@ -61,6 +65,7 @@ async function loadResults() {
         markers.value = payload.highlight;
         promoted.value = payload.promoted;
         isFuzzy.value = payload.is_fuzzy;
+        correctedQuery.value = payload.corrected_query;
     } catch (error) {
         if (requestId === latestRequestId) {
             results.value = [];
@@ -79,7 +84,10 @@ function search(newKeyword) {
 }
 
 function changePage(page) {
-    router.push({ name: 'search', query: { q: keyword.value, halaman: page > 1 ? page : undefined } });
+    router.push({
+        name: 'search',
+        query: { q: keyword.value, halaman: page > 1 ? page : undefined, persis: isExact.value ? '1' : undefined },
+    });
 }
 
 watch(
@@ -160,6 +168,32 @@ watch(
                         <template v-if="pagination.last_page > 1">
                             · halaman {{ currentPage }} dari {{ pagination.last_page }}
                         </template>
+                    </p>
+
+                    <p
+                        v-if="correctedQuery"
+                        class="mt-5 flex items-start gap-3 border-l-2 border-brand-400 pl-4 text-sm text-ink-700"
+                    >
+                        <Sparkles class="mt-0.5 size-4 shrink-0 text-brand-600" aria-hidden="true" />
+                        <span>
+                            Menampilkan hasil untuk
+                            <RouterLink
+                                :to="{ name: 'search', query: { q: correctedQuery } }"
+                                class="font-semibold text-brand-700 underline-offset-4 hover:underline"
+                            >
+                                {{ correctedQuery }}</RouterLink
+                            >.
+                            <span class="mt-0.5 block text-ink-500">
+                                Cari
+                                <RouterLink
+                                    :to="{ name: 'search', query: { q: keyword, persis: '1' } }"
+                                    class="font-medium text-ink-800 underline-offset-4 hover:underline"
+                                >
+                                    “{{ keyword }}”</RouterLink
+                                >
+                                saja
+                            </span>
+                        </span>
                     </p>
 
                     <p v-if="isFuzzy" class="mt-5 flex items-start gap-3 border-l-2 border-brand-400 pl-4 text-sm text-ink-700">

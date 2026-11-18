@@ -59,6 +59,7 @@ Prasyarat: Node.js 24+, Docker.
 
 ## Riwayat pencarian dan statistik
 
+- **Salah ketik**: bila kata kunci tidak menemukan apa pun, kata yang salah ketik dikoreksi ke kata yang benar-benar ada di CekCari (judul, alamat, deskripsi situs yang masih terdaftar, dan tag) dan hasilnya langsung ditampilkan dengan keterangan "Menampilkan hasil untuk …" serta tautan "Cari … saja" (`persis=1`, tanpa koreksi). Bila koreksi pun tidak menemukan apa pun, ditampilkan situs dengan nama yang mirip.
 - **Saran di kolom pencarian** hanya berisi riwayat pencarian pengunjung itu sendiri (maks. 10, disimpan di browsernya, bisa dihapus per entri). Tidak dikirim ke server, jadi pengunjung lain tidak pernah melihatnya.
 - **Statistik** (menu Statistik di panel, rentang hari ini / 7 hari / 30 hari / semua, jam Indonesia):
   - Superadmin: jumlah pengunjung (per browser), kunjungan (halaman yang dibuka), klik ke situs, dan klik per situs semua member.
