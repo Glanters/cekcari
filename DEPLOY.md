@@ -37,11 +37,12 @@ npm ci
 node ace build
 (cd build && npm ci --omit=dev)
 (cd build && ENV_PATH=../ node ace migration:run --force)
+(cd build && ENV_PATH=../ node ace db:seed)
 pm2 startOrRestart ecosystem.config.cjs --update-env
 pm2 save
 ```
 
-Update setelah ada perubahan kode: `git pull`, lalu ulangi langkah di atas.
+`db:seed` membuat superadmin pertama (`SuperadminSeeder`) dan aman dijalankan ulang. Update setelah ada perubahan kode: `git pull`, lalu ulangi langkah di atas.
 
 | Proses PM2 | Isi |
 |---|---|
