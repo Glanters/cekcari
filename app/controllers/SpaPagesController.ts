@@ -42,6 +42,17 @@ export default class SpaPagesController {
         })
     }
 
+    // Panduan memasang CekCari sebagai aplikasi di Android dan iPhone; boleh diindeks agar mudah ditemukan.
+    async installGuide(ctx: HttpContext) {
+        return this.render(ctx, SEARCH_ENTRY, {
+            title: `Cara pasang aplikasi ${seo.siteName} di Android dan iPhone`,
+            description: `Pasang ${seo.siteName} di layar utama ponsel Android atau iPhone dalam beberapa ketukan, tanpa Play Store atau App Store.`,
+            canonical: `${seo.searchUrl}/pasang-aplikasi`,
+            robots: 'index, follow',
+            structuredData: null,
+        })
+    }
+
     // Alamat yang tidak dikenal di domain pencarian dijawab 404 sungguhan, bukan halaman kosong berstatus 200.
     async searchNotFound(ctx: HttpContext) {
         ctx.response.status(404)

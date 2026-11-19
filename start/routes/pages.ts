@@ -21,6 +21,7 @@ router
         router.get('/sitemap.xml', [CrawlerFilesController, 'searchSitemap'])
         router.get('/', [SpaPagesController, 'searchHome'])
         router.get('/cari', [SpaPagesController, 'searchResults'])
+        router.get('/pasang-aplikasi', [SpaPagesController, 'installGuide'])
         router.get('/:section', [SpaPagesController, 'searchNotFound']).where('section', SINGLE_SEGMENT).as('search_pages.not_found')
         router
             .get('/:section/*', [SpaPagesController, 'searchNotFound'])

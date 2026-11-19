@@ -123,7 +123,22 @@ test.group('SEO dan kerangka halaman', (group) => {
         sitemap.assertStatus(200)
         assert.equal(sitemap.header('content-type'), 'application/xml; charset=UTF-8')
         assert.include(sitemap.text(), '<loc>https://cekcari.com/</loc>')
+        assert.include(sitemap.text(), '<loc>https://cekcari.com/pasang-aplikasi</loc>')
         assert.notInclude(sitemap.text(), '/cari')
+    })
+
+    test('panduan pasang aplikasi bisa dibuka dan diindeks', async ({ client, assert }) => {
+        const response = await search(client).get('/pasang-aplikasi')
+
+        response.assertStatus(200)
+        assert.include(
+            response.text(),
+            '<title>Cara pasang aplikasi CekCari di Android dan iPhone</title>'
+        )
+        assert.include(
+            response.text(),
+            '<link rel="canonical" href="https://cekcari.com/pasang-aplikasi">'
+        )
     })
 
     test('menutup seluruh domain panel dari mesin pencari', async ({ client, assert }) => {

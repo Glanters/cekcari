@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { Smartphone } from 'lucide-vue-next';
 import AppLogo from '@/components/AppLogo.vue';
 import InstallAppPrompt from '@/components/InstallAppPrompt.vue';
 import SearchBox from '@/components/SearchBox.vue';
@@ -43,6 +44,14 @@ function search(keyword) {
                 <SearchBox v-model:query="query" size="lg" is-autofocus @submit="search" />
             </div>
         </div>
+
+        <RouterLink
+            :to="{ name: 'install-guide' }"
+            class="absolute bottom-6 inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm text-ink-400 transition-colors hover:text-brand-300"
+        >
+            <Smartphone class="size-4" aria-hidden="true" />
+            Pasang CekCari di ponsel
+        </RouterLink>
         <InstallAppPrompt />
     </main>
 </template>

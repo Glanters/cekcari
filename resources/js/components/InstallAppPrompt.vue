@@ -71,12 +71,18 @@ async function install() {
             <p v-if="hintKind === 'prompt'" class="min-w-0 flex-1 leading-snug">
                 <span class="block font-semibold text-ink-50">Pasang CekCari</span>
                 <span class="hidden sm:inline">Buka langsung dari layar utama.</span>
+                <RouterLink :to="{ name: 'install-guide' }" class="text-brand-300 underline-offset-4 hover:underline">
+                    Lihat caranya
+                </RouterLink>
             </p>
             <p v-else class="min-w-0 flex-1 leading-snug">
                 <span class="block font-semibold text-ink-50">Pasang CekCari di iPhone</span>
                 Ketuk
                 <Share class="inline size-4 -translate-y-0.5 text-brand-300" aria-label="Bagikan" />
                 lalu pilih <span class="font-medium text-ink-50">“Tambah ke Layar Utama”</span>.
+                <RouterLink :to="{ name: 'install-guide' }" class="text-brand-300 underline-offset-4 hover:underline">
+                    Lihat caranya
+                </RouterLink>
             </p>
 
             <GoldButton v-if="hintKind === 'prompt'" type="button" size="sm" :is-loading="isInstalling" @click="install">

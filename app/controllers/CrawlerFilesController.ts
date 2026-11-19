@@ -30,7 +30,9 @@ export default class CrawlerFilesController {
 
     // Hanya beranda yang layak diindeks; halaman hasil pencarian sengaja tidak dimasukkan.
     async searchSitemap({ response, view }: HttpContext) {
-        const sitemap = await view.render('sitemap', { urls: [`${seo.searchUrl}/`] })
+        const sitemap = await view.render('sitemap', {
+            urls: [`${seo.searchUrl}/`, `${seo.searchUrl}/pasang-aplikasi`],
+        })
 
         return response.header('Content-Type', 'application/xml; charset=UTF-8').send(sitemap)
     }

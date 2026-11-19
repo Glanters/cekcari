@@ -17,6 +17,12 @@ const routes = [
         meta: { title: 'Hasil pencarian' },
     },
     {
+        path: '/pasang-aplikasi',
+        name: 'install-guide',
+        component: () => import('@/pages/InstallGuidePage.vue'),
+        meta: { title: 'Cara pasang aplikasi' },
+    },
+    {
         path: '/:pathMatch(.*)*',
         name: 'not-found',
         component: () => import('@/pages/NotFoundPage.vue'),
