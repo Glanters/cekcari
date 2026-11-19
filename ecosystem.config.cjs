@@ -1,6 +1,5 @@
 const path = require('node:path')
 
-// Hasil `node ace build` dijalankan dari folder build; .env tetap di folder proyek (ENV_PATH).
 const cwd = path.join(__dirname, 'build')
 const env = { NODE_ENV: 'production', ENV_PATH: '../' }
 
@@ -18,7 +17,6 @@ module.exports = {
             time: true,
         },
         {
-            // Menjalankan crawl dari antrean PostgreSQL dan menjadwalkan crawl ulang mingguan.
             name: 'cekcari-queue',
             cwd,
             script: 'ace.js',
@@ -27,7 +25,6 @@ module.exports = {
             exec_mode: 'fork',
             instances: 1,
             max_memory_restart: '512M',
-            // Worker menyelesaikan pekerjaan yang sedang berjalan sebelum berhenti.
             kill_timeout: 60_000,
             exp_backoff_restart_delay: 1_000,
             time: true,

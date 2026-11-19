@@ -55,7 +55,7 @@ Prasyarat: Node.js 24+, Docker.
 ## Urutan hasil dan promosi
 
 - **Rolling:** halaman pencarian mengirim `seed` acak milik pengunjung (disimpan di `sessionStorage`, berganti tiap 30 menit). Hasil diurutkan `md5(id || seed)`, jadi tiap pengunjung melihat urutan berbeda tetapi halaman 2, 3, dst. tetap konsisten. Tanpa `seed` (pemanggil API langsung) hasil diurutkan menurut kecocokan.
-- **Situs mirror:** bila beberapa link punya judul atau deskripsi yang persis sama (mis. depobos90.com, depobos45.com, depobos19.com), link yang paling dulu terdaftar tampil dengan teks aslinya, sedangkan link berikutnya tampil dengan variasi otomatis yang memuat nama merek dan alamat link itu (mis. "DEPOBOS — Link Alternatif depobos45.com") ditambah satu kalimat dari deskripsi aslinya. Variasi hanya untuk tampilan hasil pencarian; data di database dan panel tidak berubah. Templatnya di `app/support/result_text_variants.ts`.
+- **Situs mirror:** bila beberapa link punya judul atau deskripsi yang persis sama (mis. depobos90.com, depobos45.com, depobos19.com), link yang paling dulu terdaftar tampil dengan teks aslinya, sedangkan link berikutnya tampil dengan variasi otomatis yang memuat nama merek dan alamat link itu (mis. "DEPOBOS — Link Alternatif depobos45.com") ditambah satu kalimat dari deskripsi aslinya. Variasi hanya untuk tampilan hasil pencarian; data di database dan panel tidak berubah. Templatnya di `app/support/resultTextVariants.ts`.
 - **Promosi:** pemilik menyalakan **Promosikan link ini** di halaman detail domain. Bila kata kunci cocok, satu link promosi dipilih acak (mengikuti seed) dan tampil di slot teratas berlabel **Promosi** pada halaman 1; link itu tidak diulang di daftar biasa.
 
 ## Riwayat pencarian dan statistik
@@ -87,7 +87,7 @@ Saat go-live di cekcari.com:
 - Huruf (DM Sans, Space Grotesk, JetBrains Mono; subset latin, lisensi OFL) disimpan di `public/fonts` dan dimuat dari server sendiri, tanpa Google Fonts. DM Sans dimuat lebih awal (`preload`). Bila hurufnya diganti, ganti juga nama berkasnya karena browser menyimpannya 30 hari.
 - `Cache-Control` diatur di `config/static.ts`: `/build/*` (nama ber-hash) disimpan setahun (`immutable`), `/build/manifest.json` dan `/sw.js` selalu `no-cache`, `/fonts/*` 30 hari.
 - Beranda dan halaman hasil pencarian ikut di bundel utama (tanpa unduhan potongan kode kedua); service worker dipasang saat browser senggang supaya unduhan offline-nya tidak berebut jaringan dengan halaman pertama.
-- Domain pencarian tidak memakai sesi maupun cookie CSRF (`app/middleware/panel_session_middleware.ts`, `app/middleware/domain_shield_middleware.ts`): tidak ada login di sana, dan halaman tanpa cookie lebih mudah di-cache CDN. Header keamanan (CSP, X-Frame-Options, HSTS, nosniff) tetap dikirim.
+- Domain pencarian tidak memakai sesi maupun cookie CSRF (`app/middleware/PanelSessionMiddleware.ts`, `app/middleware/DomainShieldMiddleware.ts`): tidak ada login di sana, dan halaman tanpa cookie lebih mudah di-cache CDN. Header keamanan (CSP, X-Frame-Options, HSTS, nosniff) tetap dikirim.
 - Logo situs dimuat dengan `referrerpolicy="no-referrer"`, `loading="lazy"`, dan ukuran tetap, karena sebagian situs menolak gambar yang diminta dari domain lain.
 - **Cloudflare**: atur *Caching → Browser Cache TTL* ke **Respect Existing Headers** (bawaannya menimpa menjadi 4 jam), dan matikan *Managed robots.txt* agar `robots.txt` dari aplikasi yang dipakai.
 

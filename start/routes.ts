@@ -2,10 +2,10 @@
  * Rute dibagi per modul; setiap berkas mengikat rutenya ke domain pencarian atau domain panel.
  */
 import '#start/routes/search'
-import '#start/routes/panel_auth'
-import '#start/routes/panel_domains'
-import '#start/routes/panel_admin'
-import '#start/routes/panel_statistics'
+import '#start/routes/panelAuth'
+import '#start/routes/panelDomains'
+import '#start/routes/panelAdmin'
+import '#start/routes/panelStatistics'
 import '#start/routes/pages'
 
 import router from '@adonisjs/core/services/router'

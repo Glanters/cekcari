@@ -9,7 +9,7 @@ import http from '@/lib/http';
 import { getErrorMessage, getFieldErrors } from '@/lib/apiErrors';
 import { useToast } from '@/composables/useToast';
 
-// Sama dengan batas di server (site_metadata_fetcher.ts).
+// Sama dengan batas di server (SiteMetadataFetcher.ts).
 const MAX_DESCRIPTION_LENGTH = 1000;
 const MAX_TAGS = 10;
 

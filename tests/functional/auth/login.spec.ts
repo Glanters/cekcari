@@ -5,10 +5,10 @@ import db from '@adonisjs/lucid/services/db'
 import hash from '@adonisjs/core/services/hash'
 import User from '#models/user'
 import { accountCenter } from '#config/cekcari'
-import { unavailableResult } from '#services/account_center/account_center_result'
+import { unavailableResult } from '#services/accountCenter/accountCenterResult'
 import { ROLES } from '#services/permissions'
 import { generateTotp, generateTotpSecret } from '#services/totp'
-import { setTwoFactorRequired } from '#services/two_factor_policy'
+import { setTwoFactorRequired } from '#services/twoFactorPolicy'
 import {
     PanelBrowser,
     expectBody,
@@ -18,7 +18,7 @@ import {
     fakeAccountCenter,
     resetLimiters,
     restoreAccountCenter,
-} from '#tests/functional/auth/auth_helpers'
+} from '#tests/functional/auth/authHelpers'
 
 async function requireTwoFactor() {
     await setTwoFactorRequired(true, await createSuperadmin())

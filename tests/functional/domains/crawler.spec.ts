@@ -1,13 +1,13 @@
 import { test } from '@japa/runner'
 import app from '@adonisjs/core/services/app'
 import testUtils from '@adonisjs/core/services/test_utils'
-import { RemoteFetchException } from '#exceptions/remote_fetch_exception'
-import CrawlDomainJob from '#jobs/crawl_domain_job'
+import { RemoteFetchException } from '#exceptions/RemoteFetchException'
+import CrawlDomainJob from '#jobs/CrawlDomainJob'
 import type Domain from '#models/domain'
 import Page from '#models/page'
-import DomainCrawler from '#services/domain_crawler'
-import { createDomain } from '#tests/functional/domains/domain_helpers'
-import { fakeDns, fakeRemoteSites, htmlPage, restoreRemoteFakes } from '#tests/fakes/remote_sites'
+import DomainCrawler from '#services/DomainCrawler'
+import { createDomain } from '#tests/functional/domains/domainHelpers'
+import { fakeDns, fakeRemoteSites, htmlPage, restoreRemoteFakes } from '#tests/fakes/remoteSites'
 
 async function crawl(domainId: number) {
     const job = await app.container.make(CrawlDomainJob)

@@ -1,6 +1,6 @@
 import app from '@adonisjs/core/services/app'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
-import { failure } from '#support/api_response'
+import { failure } from '#support/apiResponse'
 
 type FrameworkError = { code?: string; status?: number; messages?: unknown }
 

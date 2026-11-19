@@ -2,8 +2,8 @@ import router from '@adonisjs/core/services/router'
 import { domains } from '#config/cekcari'
 import { throttleSearch } from '#start/limiter'
 
-const SearchResultsController = () => import('#controllers/search_results_controller')
-const VisitTrackingController = () => import('#controllers/visit_tracking_controller')
+const SearchResultsController = () => import('#controllers/SearchResultsController')
+const VisitTrackingController = () => import('#controllers/VisitTrackingController')
 
 // API pencarian publik: hanya di domain pencarian.
 router

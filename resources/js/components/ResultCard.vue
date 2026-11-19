@@ -18,7 +18,7 @@ const props = defineProps({
 
 function recordClick() {
     if (props.isTracked) {
-        trackDomainClick(getLocalStorage(), props.result.id, props.isPromoted);
+        trackDomainClick(getLocalStorage(), props.result.id);
     }
 }
 

@@ -3,10 +3,10 @@ import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
 import testUtils from '@adonisjs/core/services/test_utils'
-import { createSuperadmin, createUser, resetLimiters } from '#tests/functional/auth/auth_helpers'
-import { createDomain } from '#tests/functional/domains/domain_helpers'
+import { createSuperadmin, createUser, resetLimiters } from '#tests/functional/auth/authHelpers'
+import { createDomain } from '#tests/functional/domains/domainHelpers'
 import { panel, search } from '#tests/helpers'
-import { visitorKeyOf } from '#services/visit_tracker'
+import { visitorKeyOf } from '#services/VisitTracker'
 
 async function insertClick(domainId: number, visitorId: string, clickedAt = DateTime.now()) {
     await db.table('domain_clicks').insert({
@@ -74,7 +74,8 @@ test.group('Pencatatan kunjungan dan klik', (group) => {
         const clicks = await db.from('domain_clicks')
         assert.lengthOf(clicks, 1)
         assert.equal(Number(clicks[0].domain_id), domain.id)
-        assert.isTrue(clicks[0].is_promoted)
+        // Klaim is_promoted dari browser diabaikan; yang dipakai status situs di database.
+        assert.isFalse(clicks[0].is_promoted)
     })
 
     test('pencatat hanya ada di domain pencarian', async ({ client }) => {

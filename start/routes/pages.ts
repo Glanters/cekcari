@@ -1,8 +1,8 @@
 import router from '@adonisjs/core/services/router'
 import { domains } from '#config/cekcari'
 
-const SpaPagesController = () => import('#controllers/spa_pages_controller')
-const CrawlerFilesController = () => import('#controllers/crawler_files_controller')
+const SpaPagesController = () => import('#controllers/SpaPagesController')
+const CrawlerFilesController = () => import('#controllers/CrawlerFilesController')
 
 /**
  * Rute catch-all dibatasi lewat segmen pertamanya, bukan lewat urutan pendaftaran: router mencocokkan

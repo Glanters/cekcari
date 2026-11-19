@@ -24,7 +24,7 @@ const shieldConfig = defineConfig({
     csrf: {
         enabled: true,
         // Domain pencarian (termasuk pencatat kunjungan/klik via sendBeacon) memakai Shield tanpa CSRF;
-        // lihat app/middleware/domain_shield_middleware.ts.
+        // lihat app/middleware/DomainShieldMiddleware.ts.
         exceptRoutes: [],
         enableXsrfCookie: true,
         methods: ['POST', 'PUT', 'PATCH', 'DELETE'],

@@ -1,0 +1,382 @@
+import { inject } from '@adonisjs/core'
+import db from '@adonisjs/lucid/services/db'
+import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
+import { errors as vineErrors } from '@vinejs/vine'
+import { DateTime } from 'luxon'
+import { RemoteFetchException, SiteRedirectedException } from '#exceptions/RemoteFetchException'
+import { dispatchDomainCrawl } from '#jobs/crawlDomainDispatch'
+import Domain from '#models/domain'
+import Tag from '#models/tag'
+import type User from '#models/user'
+import SiteIconFinder from '#services/SiteIconFinder'
+import SiteMetadataFetcher, { type SiteMetadata } from '#services/SiteMetadataFetcher'
+import { addressOf, entryUrlOf, hostOf } from '#support/siteAddress'
+
+const RECRAWL_AFTER_DAYS = 7
+const RECRAWL_BATCH_SIZE = 100
+const UNIQUE_VIOLATION = '23505'
+
+type ReachableSite = { siteUrl: string; metadata: SiteMetadata }
+
+export type DomainDetails = { description: string; tags: string[] }
+
+// Setara Str::slug untuk nama tag: huruf beraksen menjadi huruf dasar, selain huruf/angka menjadi "-".
+function slugOf(name: string): string {
+    return name
+        .normalize('NFKD')
+        .replace(/[̀-ͯ]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+}
+
+// Pembanding daftar tag: huruf kecil, tanpa duplikat, urutan dipertahankan (sama seperti syncTags).
+function normalizedTagList(names: string[]): string[] {
+    return [...new Set(names.map((name) => slugOf(name.trim().toLowerCase())).filter(Boolean))]
+}
+
+function isUniqueViolation(error: unknown): boolean {
+    return (error as { code?: unknown } | null)?.code === UNIQUE_VIOLATION
+}
+
+@inject()
+export default class DomainService {
+    constructor(
+        private readonly metadataFetcher: SiteMetadataFetcher,
+        private readonly iconFinder: SiteIconFinder
+    ) {}
+
+    /**
+     * Pemilik cukup mengisi link (boleh dengan path): judul, deskripsi, tag, dan logo diambil dari halaman itu,
+     * lalu crawl pertama dijadwalkan dalam transaksi yang sama. Superadmin boleh mendaftarkan link atas nama
+     * member lain lewat ownerId; created_by tetap pengguna yang menambahkan.
+     */
+    async create(actor: User, url: string, ownerId: number = actor.id): Promise<Domain> {
+        const { siteUrl, metadata } = await this.fetchReachableSite(url)
+        const logoUrl = await this.iconFinder.find(metadata.icons, siteUrl)
+
+        return db.transaction(async (trx) => {
+            const domain = await Domain.create(
+                {
+                    userId: ownerId,
+                    url: siteUrl,
+                    host: hostOf(url),
+                    title: metadata.title,
+                    description: metadata.description,
+                    logoUrl,
+                    crawlStatus: 'pending',
+                    createdBy: actor.id,
+                    updatedBy: actor.id,
+                },
+                { client: trx }
+            )
+
+            await this.syncTags(domain, metadata.tags, trx)
+            await dispatchDomainCrawl(domain.id, trx)
+
+            return domain
+        })
+    }
+
+    /**
+     * Mengganti link: data situs diambil ulang, halaman lama dibuang bila link berubah,
+     * dan crawl dijadwalkan ulang.
+     */
+    async update(domain: Domain, editor: User, url: string): Promise<Domain> {
+        const { siteUrl, metadata } = await this.fetchReachableSite(url)
+        const logoUrl = await this.iconFinder.find(metadata.icons, siteUrl)
+        // Link berbeda berarti cakupan crawl berbeda, jadi halaman lama tidak berlaku lagi.
+        const isLinkChanged = addressOf(url) !== addressOf(domain.url)
+
+        // Isian pemilik milik link lama; link baru (situs lain) kembali memakai data otomatis.
+        const keepsDescription = !isLinkChanged && domain.descriptionEditedAt !== null
+        const keepsTags = !isLinkChanged && domain.tagsEditedAt !== null
+
+        await db.transaction(async (trx) => {
+            domain.useTransaction(trx)
+            domain.merge({
+                url: siteUrl,
+                host: hostOf(url),
+                title: metadata.title,
+                description: keepsDescription ? domain.description : metadata.description,
+                descriptionEditedAt: keepsDescription ? domain.descriptionEditedAt : null,
+                tagsEditedAt: keepsTags ? domain.tagsEditedAt : null,
+                logoUrl,
+                crawlStatus: 'pending',
+                lastCrawledAt: isLinkChanged ? null : domain.lastCrawledAt,
+                updatedBy: editor.id,
+            })
+            await domain.save()
+
+            if (isLinkChanged) {
+                await domain.related('pages').query().delete()
+            }
+
+            if (!keepsTags) {
+                await this.syncTags(domain, metadata.tags, trx)
+            }
+            await dispatchDomainCrawl(domain.id, trx)
+        })
+
+        return domain
+    }
+
+    /**
+     * Dipakai crawler agar judul, deskripsi, tag, dan logo mengikuti perubahan di situs pemilik.
+     * Deskripsi atau tag yang sudah diubah pemilik sendiri tidak ditimpa.
+     */
+    async refreshMetadata(domain: Domain, metadata: SiteMetadata): Promise<void> {
+        const logoUrl = await this.iconFinder.find(metadata.icons, domain.url)
+
+        await db.transaction(async (trx) => {
+            domain.useTransaction(trx)
+            domain.merge({ title: metadata.title, logoUrl })
+
+            if (domain.descriptionEditedAt === null) {
+                domain.description = metadata.description
+            }
+
+            await domain.save()
+
+            if (domain.tagsEditedAt === null) {
+                await this.syncTags(domain, metadata.tags, trx)
+            }
+        })
+    }
+
+    /**
+     * Deskripsi dan tag isian pemilik (atau superadmin). Hanya bagian yang benar-benar berubah yang
+     * ditandai, supaya tag tetap otomatis bila pemilik hanya mengubah deskripsi, dan sebaliknya.
+     */
+    async updateDetails(domain: Domain, editor: User, details: DomainDetails): Promise<void> {
+        const currentTags = domain.tags.map((tag) => tag.name)
+        const isDescriptionChanged = details.description !== domain.description
+        const isTagsChanged =
+            JSON.stringify(normalizedTagList(details.tags)) !==
+            JSON.stringify(normalizedTagList(currentTags))
+        const now = DateTime.now()
+
+        await db.transaction(async (trx) => {
+            domain.useTransaction(trx)
+            domain.merge({ updatedBy: editor.id })
+
+            if (isDescriptionChanged) {
+                domain.merge({ description: details.description, descriptionEditedAt: now })
+            }
+
+            if (isTagsChanged) {
+                domain.tagsEditedAt = now
+            }
+
+            await domain.save()
+
+            if (isTagsChanged) {
+                await this.syncTags(domain, details.tags, trx)
+            }
+        })
+    }
+
+    /**
+     * Membaca ulang ikon satu situs tanpa crawl penuh (dipakai perintah domains:refresh-icons).
+     * Mengembalikan true bila logo berubah. Situs yang tidak bisa dibaca dibiarkan apa adanya.
+     */
+    async refreshIcon(domain: Domain): Promise<boolean> {
+        let metadata: SiteMetadata
+
+        try {
+            metadata = await this.metadataFetcher.fetch(domain.url, domain.host)
+        } catch (error) {
+            if (error instanceof RemoteFetchException) {
+                return false
+            }
+
+            throw error
+        }
+
+        const logoUrl = await this.iconFinder.find(metadata.icons, domain.url)
+
+        if (logoUrl === domain.logoUrl) {
+            return false
+        }
+
+        await db.transaction(async (trx) => {
+            domain.useTransaction(trx)
+            domain.logoUrl = logoUrl
+            await domain.save()
+        })
+
+        return true
+    }
+
+    async delete(domain: Domain, editor: User): Promise<void> {
+        await db.transaction(async (trx) => {
+            domain.useTransaction(trx)
+            domain.merge({ updatedBy: editor.id, deletedAt: DateTime.now() })
+            await domain.save()
+        })
+    }
+
+    async requestCrawl(domain: Domain, editor: User): Promise<Domain> {
+        if (domain.crawlStatus === 'pending' || domain.crawlStatus === 'crawling') {
+            throw new vineErrors.E_VALIDATION_ERROR([
+                {
+                    field: 'crawl',
+                    message:
+                        'Pembaruan data untuk domain ini sedang berjalan. Tunggu hingga selesai.',
+                },
+            ])
+        }
+
+        await db.transaction(async (trx) => {
+            domain.useTransaction(trx)
+            domain.merge({ crawlStatus: 'pending', updatedBy: editor.id })
+            await domain.save()
+            await dispatchDomainCrawl(domain.id, trx)
+        })
+
+        return domain
+    }
+
+    /**
+     * Pengganti jadwal mingguan domains:recrawl: menjadwalkan crawl ulang untuk domain yang datanya
+     * sudah lebih dari seminggu. Dipanggil berkala oleh worker antrean. Mengembalikan jumlah domain yang dijadwalkan.
+     */
+    async scheduleDueRecrawls(): Promise<number> {
+        const dueBefore = DateTime.now()
+            .minus({ days: RECRAWL_AFTER_DAYS })
+            .toSQL({ includeOffset: false })
+        let scheduledCount = 0
+        let lastId = 0
+
+        while (true) {
+            const domains = await Domain.query()
+                .withScopes((scopes) => scopes.active())
+                .whereNotIn('crawl_status', ['pending', 'crawling'])
+                .where((query) =>
+                    query.whereNull('last_crawled_at').orWhere('last_crawled_at', '<', dueBefore)
+                )
+                .where('id', '>', lastId)
+                .orderBy('id')
+                .limit(RECRAWL_BATCH_SIZE)
+
+            if (domains.length === 0) {
+                return scheduledCount
+            }
+
+            for (const domain of domains) {
+                await db.transaction(async (trx) => {
+                    domain.useTransaction(trx)
+                    domain.crawlStatus = 'pending'
+                    await domain.save()
+                    await dispatchDomainCrawl(domain.id, trx)
+                })
+                scheduledCount++
+                lastId = domain.id
+            }
+        }
+    }
+
+    /**
+     * Membaca halaman yang didaftarkan. Alamat dicoba lewat https lebih dulu; bila situs
+     * hanya melayani http, alamat http yang dipakai dan disimpan. Link pengalih yang tujuannya
+     * menolak pembaca otomatis tetap diterima; crawl berikutnya menandainya "Dialihkan".
+     */
+    private async fetchReachableSite(url: string): Promise<ReachableSite> {
+        const host = hostOf(url)
+        const siteUrl = entryUrlOf(url)
+
+        try {
+            return { siteUrl, metadata: await this.metadataFetcher.fetch(siteUrl, host) }
+        } catch (httpsFailure) {
+            // Link sudah terbukti hidup karena mengalihkan; mencoba http tidak akan mengubah tujuannya.
+            if (httpsFailure instanceof SiteRedirectedException) {
+                return {
+                    siteUrl,
+                    metadata: this.metadataFetcher.forRedirectLink(siteUrl, httpsFailure.targetUrl),
+                }
+            }
+
+            if (
+                !(httpsFailure instanceof RemoteFetchException) ||
+                !siteUrl.startsWith('https://')
+            ) {
+                throw httpsFailure
+            }
+
+            const httpUrl = `http://${siteUrl.slice('https://'.length)}`
+
+            try {
+                return {
+                    siteUrl: httpUrl,
+                    metadata: await this.metadataFetcher.fetch(httpUrl, host),
+                }
+            } catch (httpFailure) {
+                if (httpFailure instanceof SiteRedirectedException) {
+                    return {
+                        siteUrl: httpUrl,
+                        metadata: this.metadataFetcher.forRedirectLink(
+                            httpUrl,
+                            httpFailure.targetUrl
+                        ),
+                    }
+                }
+
+                if (!(httpFailure instanceof RemoteFetchException)) {
+                    throw httpFailure
+                }
+
+                // Pesan kegagalan https lebih relevan bagi pemilik, karena itu alamat yang ia isi.
+                throw httpsFailure
+            }
+        }
+    }
+
+    private async syncTags(
+        domain: Domain,
+        tagNames: string[],
+        trx: TransactionClientContract
+    ): Promise<void> {
+        const tagIds: number[] = []
+        const seenSlugs = new Set<string>()
+
+        for (const rawName of tagNames) {
+            const name = rawName.trim().toLowerCase()
+            const slug = slugOf(name)
+
+            if (slug === '' || seenSlugs.has(slug)) {
+                continue
+            }
+
+            seenSlugs.add(slug)
+            const tag = await this.findOrCreateTag(name, slug, trx)
+            tagIds.push(tag.id)
+        }
+
+        await domain.related('tags').sync(tagIds, true, trx)
+    }
+
+    // Dua situs bisa membuat tag yang sama bersamaan; savepoint menjaga transaksi luar tetap hidup saat bentrok.
+    private async findOrCreateTag(
+        name: string,
+        slug: string,
+        trx: TransactionClientContract
+    ): Promise<Tag> {
+        const existing = await Tag.query({ client: trx }).where('slug', slug).first()
+
+        if (existing !== null) {
+            return existing
+        }
+
+        try {
+            return await trx.transaction((savepoint) =>
+                Tag.create({ name, slug }, { client: savepoint })
+            )
+        } catch (error) {
+            if (!isUniqueViolation(error)) {
+                throw error
+            }
+
+            return Tag.query({ client: trx }).where('slug', slug).firstOrFail()
+        }
+    }
+}

@@ -3,18 +3,18 @@ import app from '@adonisjs/core/services/app'
 import testUtils from '@adonisjs/core/services/test_utils'
 import db from '@adonisjs/lucid/services/db'
 import { DateTime } from 'luxon'
-import { dispatchDomainCrawl } from '#jobs/crawl_domain_dispatch'
+import { dispatchDomainCrawl } from '#jobs/crawlDomainDispatch'
 import { QUEUE_JOBS } from '#jobs/registry'
-import DomainService from '#services/domain_service'
+import DomainService from '#services/DomainService'
 import { dispatch, type JobPayload } from '#services/queue'
-import QueueWorker, { STALE_RESERVATION_SECONDS, type QueueJob } from '#services/queue_worker'
-import { createDomain, queuedCrawlDomainIds } from '#tests/functional/domains/domain_helpers'
+import QueueWorker, { STALE_RESERVATION_SECONDS, type QueueJob } from '#services/QueueWorker'
+import { createDomain, queuedCrawlDomainIds } from '#tests/functional/domains/domainHelpers'
 import {
     fakeDns,
     fakeRemoteSites,
     htmlPage,
     restoreRemoteFakes,
-} from '#tests/fakes/remote_sites'
+} from '#tests/fakes/remoteSites'
 
 const handledPayloads: JobPayload[] = []
 const failedPayloads: JobPayload[] = []

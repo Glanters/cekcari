@@ -12,11 +12,15 @@ export default class extends BaseSchema {
             table.string('host', 255).notNullable().index()
             table.string('title', 120).notNullable()
             table.text('description').notNullable()
-            table.string('logo_path', 255).nullable()
+            // Alamat ikon di situs pemiliknya (tidak disalin ke object storage); diisi crawl.
+            table.string('logo_url', 2048).nullable()
             table.boolean('is_promoted').notNullable().defaultTo(false).index()
             table.string('crawl_status', 20).notNullable().defaultTo('pending')
             table.string('redirected_to', 2048).nullable()
             table.timestamp('last_crawled_at').nullable()
+            // Waktu pemilik mengubah deskripsi/tag, supaya crawl berkala tidak menimpanya; null = data otomatis.
+            table.timestamp('description_edited_at').nullable()
+            table.timestamp('tags_edited_at').nullable()
             table.bigInteger('created_by').unsigned().nullable().index().references('id').inTable('users').onDelete('SET NULL')
             table.bigInteger('updated_by').unsigned().nullable().index().references('id').inTable('users').onDelete('SET NULL')
             table.timestamp('created_at').notNullable()

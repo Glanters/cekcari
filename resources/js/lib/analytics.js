@@ -43,6 +43,6 @@ export function trackVisit(storage) {
     send('/api/v1/visits', { visitor_id: getVisitorId(storage) });
 }
 
-export function trackDomainClick(storage, domainId, isPromoted) {
-    send('/api/v1/domain-clicks', { visitor_id: getVisitorId(storage), domain_id: domainId, is_promoted: isPromoted });
+export function trackDomainClick(storage, domainId) {
+    send('/api/v1/domain-clicks', { visitor_id: getVisitorId(storage), domain_id: domainId });
 }

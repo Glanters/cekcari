@@ -1,5 +1,5 @@
-import CrawlDomainJob from '#jobs/crawl_domain_job'
-import type { QueueJobClass } from '#services/queue_worker'
+import CrawlDomainJob from '#jobs/CrawlDomainJob'
+import type { QueueJobClass } from '#services/QueueWorker'
 
 /**
  * Semua jenis pekerjaan yang dikenali worker. Pekerjaan baru wajib didaftarkan di sini.

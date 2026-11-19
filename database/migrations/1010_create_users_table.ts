@@ -19,6 +19,9 @@ export default class extends BaseSchema {
             table.text('two_factor_secret').nullable()
             table.jsonb('two_factor_recovery_codes').nullable()
             table.timestamp('two_factor_confirmed_at').nullable()
+            // Periode TOTP (time-step) dari kode terakhir yang diterima. Kode yang periodenya tidak lebih baru
+            // ditolak, jadi kode yang sama tidak bisa dipakai dua kali selama masih berlaku.
+            table.bigInteger('two_factor_last_step').nullable()
             table.bigInteger('created_by').unsigned().nullable().index().references('id').inTable('users').onDelete('SET NULL')
             table.bigInteger('updated_by').unsigned().nullable().index().references('id').inTable('users').onDelete('SET NULL')
             table.timestamp('created_at').notNullable()

@@ -85,6 +85,8 @@ export default class extends BaseSchema {
                     // Superadmin boleh melihat dan mengelola (tambah, ubah, hapus) situs milik semua member.
                     { name: 'domains.view_all', created_at: now, updated_at: now },
                     { name: 'domains.manage_all', created_at: now, updated_at: now },
+                    // Superadmin melihat jumlah pengunjung dan klik semua situs; member hanya klik situs miliknya.
+                    { name: 'statistics.view_all', created_at: now, updated_at: now },
                 ])
                 .returning('id')
 
