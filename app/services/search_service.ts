@@ -8,7 +8,14 @@ import { variantDescription, variantTags, variantTitle } from '#support/result_t
 export const HIGHLIGHT_START = '⟦'
 export const HIGHLIGHT_END = '⟧'
 
-const TS_QUERY = "websearch_to_tsquery('simple', ?)"
+/**
+ * Kata kunci 3 huruf atau lebih juga cocok dengan kata yang diawalinya: "jutawan" menemukan
+ * "jutawanbet" dan host "jutawan81605.com". Setiap leksem hasil websearch_to_tsquery ('kata') diberi
+ * ":*"; kata yang lebih pendek tetap harus sama persis agar "a" tidak cocok dengan semua situs.
+ */
+const TS_QUERY =
+    "to_tsquery('simple', regexp_replace(websearch_to_tsquery('simple', ?)::text," +
+    String.raw` '''(([^'']|''''){3,})''', '''\1'':*', 'g'))`
 const FUZZY_THRESHOLD = 0.4
 // Jalan terakhir hanya menampilkan situs yang paling mirip, bukan semua situs yang kebetulan berbagi
 // satu kata umum (mis. ratusan situs bernama "togel ..." untuk pencarian "togel onlen").
@@ -162,8 +169,11 @@ export default class SearchService {
                 db.raw(
                     `ts_rank(domains.search_vector, ${TS_QUERY})` +
                         ' + coalesce(page_hits.page_rank, 0) * 0.5' +
-                        ' + coalesce(tag_hits.tag_matches, 0) * 0.3 AS score',
-                    [keyword]
+                        ' + coalesce(tag_hits.tag_matches, 0) * 0.3 AS score,' +
+                        // 0 = data situs sendiri (judul, host, deskripsi, tag) cocok; 1 = hanya isi halamannya.
+                        ` CASE WHEN domains.search_vector @@ ${TS_QUERY} OR tag_hits.domain_id IS NOT NULL` +
+                        ' THEN 0 ELSE 1 END AS match_tier',
+                    [keyword, keyword]
                 )
             )
     }
@@ -193,16 +203,21 @@ export default class SearchService {
 
         return this.baseQuery()
             .whereIn('domains.id', closest)
-            .select(db.raw(`${score} AS score`, scoreBindings))
+            .select(db.raw(`${score} AS score, 0 AS match_tier`, scoreBindings))
     }
 
-    // Tanpa seed (mis. pemanggil API langsung) hasil diurutkan menurut kecocokan.
+    /**
+     * Situs yang data dirinya cocok selalu di atas situs yang cocok hanya lewat isi halamannya.
+     * Tanpa seed (mis. pemanggil API langsung) hasil lalu diurutkan menurut kecocokan.
+     */
     private applyOrder(matches: DomainQuery, seed: number | null): DomainQuery {
+        const tiered = matches.orderBy('match_tier', 'asc')
+
         if (seed === null) {
-            return matches.orderBy('score', 'desc').orderBy('domains.id', 'asc')
+            return tiered.orderBy('score', 'desc').orderBy('domains.id', 'asc')
         }
 
-        return matches
+        return tiered
             .orderByRaw('md5(domains.id::text || ?)', [String(seed)])
             .orderBy('domains.id', 'asc')
     }
