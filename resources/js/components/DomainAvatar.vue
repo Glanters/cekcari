@@ -5,6 +5,8 @@ const props = defineProps({
     logoUrl: { type: String, default: null },
     name: { type: String, required: true },
     size: { type: String, default: 'md', validator: (value) => ['sm', 'md', 'lg'].includes(value) },
+    // Bulat seperti ikon situs di mesin pencari umum (dipakai di hasil pencarian).
+    isRound: { type: Boolean, default: false },
 });
 
 const hasLogoFailed = ref(false);
@@ -30,7 +32,7 @@ const SIZE_CLASSES = {
         :src="logoUrl"
         :alt="`Logo ${name}`"
         class="shrink-0 border border-ink-100 bg-surface object-contain"
-        :class="SIZE_CLASSES[size]"
+        :class="[SIZE_CLASSES[size], { 'rounded-full p-1': isRound }]"
         :width="SIZE_PIXELS[size]"
         :height="SIZE_PIXELS[size]"
         loading="lazy"
@@ -41,7 +43,7 @@ const SIZE_CLASSES = {
     <span
         v-else
         class="grid shrink-0 place-items-center bg-brand-50 font-semibold text-brand-700"
-        :class="SIZE_CLASSES[size]"
+        :class="[SIZE_CLASSES[size], { 'rounded-full': isRound }]"
         aria-hidden="true"
     >
         {{ initial }}

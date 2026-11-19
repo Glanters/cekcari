@@ -45,6 +45,43 @@ export function splitSiteUrl(url) {
 }
 
 /**
+ * Alamat ringkas gaya mesin pencari: "https://psms.id › players › 2026" (tanpa query).
+ */
+export function breadcrumbOf(url) {
+    const parsedUrl = new URL(url);
+    const segments = parsedUrl.pathname
+        .split('/')
+        .filter((segment) => segment !== '')
+        .map((segment) => {
+            try {
+                return decodeURIComponent(segment);
+            } catch {
+                return segment;
+            }
+        });
+
+    return [`${parsedUrl.protocol}//${parsedUrl.host}`, ...segments].join(' › ');
+}
+
+const SITE_NAME_SEPARATOR = /\s+[-–—|·:]\s+/;
+const MAX_SITE_NAME_LENGTH = 40;
+
+/**
+ * Nama situs di atas alamatnya: bagian judul sebelum pemisah ("LINETOGEL - Situs Toto…" → "LINETOGEL").
+ * Bila judul tidak punya pemisah atau bagian itu terlalu panjang, host (tanpa www.) yang dipakai.
+ */
+export function siteNameOf(title, url) {
+    const [firstPart, ...rest] = String(title ?? '').split(SITE_NAME_SEPARATOR);
+    const name = firstPart.trim();
+
+    if (rest.length > 0 && name.length > 1 && name.length <= MAX_SITE_NAME_LENGTH) {
+        return name;
+    }
+
+    return new URL(url).hostname.replace(/^www\./, '');
+}
+
+/**
  * Memecah teks tempelan (dipisah baris baru, spasi, koma, atau titik koma) menjadi daftar alamat unik.
  *
  * @returns {{ address: string, host: string, isValid: boolean }[]}

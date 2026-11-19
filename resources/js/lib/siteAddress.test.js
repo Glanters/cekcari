@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { addressKeyOf, hostOf, isSiteAddress, parseSiteAddresses, splitSiteUrl } from './siteAddress';
+import {
+    addressKeyOf,
+    breadcrumbOf,
+    hostOf,
+    isSiteAddress,
+    parseSiteAddresses,
+    siteNameOf,
+    splitSiteUrl,
+} from './siteAddress';
 
 describe('isSiteAddress', () => {
     it('menerima alamat polos maupun lengkap', () => {
@@ -22,6 +30,27 @@ describe('splitSiteUrl', () => {
 
     it('mengosongkan path untuk halaman utama', () => {
         expect(splitSiteUrl('http://psms.id')).toEqual({ scheme: 'http://', host: 'psms.id', path: '' });
+    });
+});
+
+describe('breadcrumbOf', () => {
+    it('menampilkan path sebagai remah alamat tanpa query', () => {
+        expect(breadcrumbOf('https://dkwl.b-cdn.net/d/indrabet-kl2/register?ref=1')).toBe(
+            'https://dkwl.b-cdn.net › d › indrabet-kl2 › register',
+        );
+        expect(breadcrumbOf('https://iana.org')).toBe('https://iana.org');
+    });
+});
+
+describe('siteNameOf', () => {
+    it('memakai bagian judul sebelum pemisah sebagai nama situs', () => {
+        expect(siteNameOf('LINETOGEL - Situs Toto Online Terpercaya', 'https://zodiak.linetogel662.life')).toBe('LINETOGEL');
+        expect(siteNameOf('Indrabet — Link Alternatif', 'https://indrabet77182.com')).toBe('Indrabet');
+    });
+
+    it('memakai host bila judul tidak punya pemisah', () => {
+        expect(siteNameOf('Internet Assigned Numbers Authority', 'https://www.iana.org')).toBe('iana.org');
+        expect(siteNameOf('Halo-halo Bandung', 'https://bandung.id')).toBe('bandung.id');
     });
 });
 

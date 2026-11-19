@@ -216,7 +216,7 @@ watch(
                         <ResultCard :result="promoted" :markers="markers" is-tracked is-promoted />
                     </section>
 
-                    <ol class="mt-1 divide-y divide-ink-200/80" aria-label="Hasil pencarian">
+                    <ol class="mt-2" aria-label="Hasil pencarian">
                         <li v-for="result in results" :key="result.id">
                             <ResultCard :result="result" :markers="markers" is-tracked />
                         </li>
