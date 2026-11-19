@@ -1,11 +1,8 @@
 <script setup>
-import { computed } from 'vue';
-import { ChevronRight } from 'lucide-vue-next';
-import DomainAvatar from '@/components/DomainAvatar.vue';
+import { ChevronRight, Megaphone } from 'lucide-vue-next';
 import HighlightedText from '@/components/HighlightedText.vue';
 import SiteAddress from '@/components/SiteAddress.vue';
 import { trackDomainClick } from '@/lib/analytics';
-import { stripHighlightMarkers } from '@/lib/highlight';
 import { getLocalStorage } from '@/lib/pwa';
 
 const props = defineProps({
@@ -14,6 +11,9 @@ const props = defineProps({
     // Hanya hasil pencarian sungguhan yang dihitung; pratinjau di panel tidak ikut tercatat.
     isTracked: { type: Boolean, default: false },
     isPromoted: { type: Boolean, default: false },
+    // Nomor urut hasil (lanjut antarhalaman). Menggantikan favicon situs, yang sering gagal dimuat
+    // dari situs pemiliknya dan membuat daftar tampak berantakan.
+    position: { type: Number, default: null },
 });
 
 function recordClick() {
@@ -21,8 +21,6 @@ function recordClick() {
         trackDomainClick(getLocalStorage(), props.result.id, props.isPromoted);
     }
 }
-
-const plainTitle = computed(() => stripHighlightMarkers(props.result.title, props.markers.start, props.markers.end));
 
 function pathOf(url) {
     const parsedUrl = new URL(url);
@@ -43,7 +41,19 @@ function pathOf(url) {
         />
 
         <div class="flex items-center gap-3">
-            <DomainAvatar :logo-url="result.logo_url" :name="plainTitle" size="sm" />
+            <span
+                v-if="isPromoted"
+                class="grid size-7 shrink-0 place-items-center rounded-md bg-brand-200 text-brand-800"
+                aria-hidden="true"
+            >
+                <Megaphone class="size-3.5" />
+            </span>
+            <span
+                v-else-if="position !== null"
+                class="grid h-7 min-w-7 shrink-0 place-items-center rounded-md bg-ink-100 px-1.5 font-mono text-xs font-semibold text-ink-600 tabular-nums"
+            >
+                <span class="sr-only">Hasil ke-</span>{{ position }}
+            </span>
             <p class="min-w-0 truncate text-xs">
                 <SiteAddress :url="result.url" scheme-visibility="desktop" />
             </p>

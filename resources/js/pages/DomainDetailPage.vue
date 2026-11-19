@@ -185,7 +185,7 @@ const isOtherMembersSite = computed(() => domain.value !== null && domain.value.
                             Tampilan di hasil pencarian CekCari
                         </h2>
                         <div class="mt-3 rounded-3xl border border-ink-200/70 bg-surface px-6 shadow-card sm:px-8">
-                            <ResultCard :result="{ ...domain, related_pages: [] }" :markers="NO_HIGHLIGHT_MARKERS" />
+                            <ResultCard :result="{ ...domain, related_pages: [] }" :markers="NO_HIGHLIGHT_MARKERS" :position="1" />
                         </div>
                     </section>
 

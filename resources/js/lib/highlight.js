@@ -49,7 +49,3 @@ function mergeAdjacentSegments(segments) {
         return merged;
     }, []);
 }
-
-export function stripHighlightMarkers(text, startMarker, endMarker) {
-    return (text ?? '').replaceAll(startMarker, '').replaceAll(endMarker, '');
-}

@@ -12,7 +12,6 @@ export function presentSearchHit(hit: SearchHit) {
         host: domain.host,
         title: hit.titleHighlight,
         description: hit.descriptionHighlight,
-        logo_url: domain.logoUrl,
         related_pages: hit.relatedPages,
     }
 }

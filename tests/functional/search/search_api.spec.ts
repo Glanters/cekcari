@@ -346,7 +346,6 @@ test.group('API pencarian', (group) => {
                 items: [
                     {
                         title: `${HIGHLIGHT_START}Kopi${HIGHLIGHT_END} Nusantara`,
-                        logo_url: null,
                         related_pages: [],
                     },
                 ],
