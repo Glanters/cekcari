@@ -66,12 +66,6 @@ function pathOf(url) {
             <HighlightedText :text="result.description" :markers="markers" />
         </p>
 
-        <p v-if="result.tags.length" class="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm text-ink-500" aria-label="Tag">
-            <span v-for="tag in result.tags" :key="tag">
-                <span class="text-brand-500" aria-hidden="true">#</span>{{ tag }}
-            </span>
-        </p>
-
         <!-- Ponsel: daftar judul ringkas yang mudah disentuh. Layar lebar: dua kolom dengan cuplikan. -->
         <section
             v-if="result.related_pages.length"

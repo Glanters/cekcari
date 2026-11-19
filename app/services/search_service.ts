@@ -2,7 +2,7 @@ import db from '@adonisjs/lucid/services/db'
 import type { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
 import Domain from '#models/domain'
 import SpellingCorrector from '#services/spelling_corrector'
-import { variantDescription, variantTags, variantTitle } from '#support/result_text_variants'
+import { variantDescription, variantTitle } from '#support/result_text_variants'
 
 // Penanda sorotan sengaja bukan tag HTML agar frontend tidak perlu merender HTML mentah.
 export const HIGHLIGHT_START = '⟦'
@@ -33,8 +33,6 @@ export type SearchHit = {
     domain: Domain
     titleHighlight: string
     descriptionHighlight: string
-    // Nama tag sesuai urutan tampil (digeser untuk situs mirror).
-    tags: string[]
     relatedPages: RelatedPage[]
 }
 
@@ -51,7 +49,7 @@ type HeadlineRow = { id: number; title_highlight: string; description_highlight:
 
 type DuplicateRankRow = { id: number; title_rank: number; description_rank: number }
 
-type DisplayText = { id: number; title: string; description: string; tags: string[] }
+type DisplayText = { id: number; title: string; description: string }
 
 type RelatedPageRow = { domain_id: number; url: string; title: string | null; snippet: string }
 
@@ -327,7 +325,6 @@ export default class SearchService {
                 titleHighlight: headline?.title_highlight ?? displayTexts[index].title,
                 descriptionHighlight:
                     headline?.description_highlight ?? displayTexts[index].description,
-                tags: displayTexts[index].tags,
                 relatedPages: relatedPages.get(Number(domain.id)) ?? [],
             }
         })
@@ -399,7 +396,6 @@ export default class SearchService {
                     descriptionRank > 0 && source.description.trim().length > 0
                         ? variantDescription(source, descriptionRank)
                         : domain.description,
-                tags: titleRank > 0 ? variantTags(tagNames, titleRank) : tagNames,
             }
         })
     }

@@ -167,7 +167,7 @@ test.group('API pencarian', (group) => {
 
         response.assertStatus(200)
         response.assertBodyContains({
-            data: { items: [{ id: Number(domain.id), tags: ['kuliner'] }] },
+            data: { items: [{ id: Number(domain.id) }] },
         })
     })
 

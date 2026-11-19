@@ -77,7 +77,7 @@ async function requestCrawl() {
             Situs tidak dapat dibaca. Pastikan situs aktif dan tidak memblokir bot, lalu perbarui lagi.
         </p>
         <p v-else class="mt-2 text-sm text-ink-500">
-            Data situs diperbarui otomatis setiap minggu, termasuk judul, deskripsi, dan tag.
+            Data situs diperbarui otomatis setiap minggu. Deskripsi dan tag yang Anda atur sendiri tidak ditimpa.
         </p>
 
         <AppButton

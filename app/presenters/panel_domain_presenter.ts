@@ -22,6 +22,9 @@ export function presentPanelDomain(domain: Domain, canManage: boolean) {
         logo_url: domain.logoUrl,
         is_promoted: domain.isPromoted,
         tags: domain.tags.map((tag) => tag.name),
+        // true: diisi pemilik sendiri, tidak ditimpa saat data situs dibaca ulang.
+        is_description_edited: domain.descriptionEditedAt !== null,
+        is_tags_edited: domain.tagsEditedAt !== null,
         crawl_status: domain.crawlStatus,
         redirected_to: domain.redirectedTo,
         last_crawled_at: isoOf(domain.lastCrawledAt),

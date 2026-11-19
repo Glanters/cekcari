@@ -15,7 +15,9 @@ export type SiteMetadata = {
 export const MAX_TITLE_LENGTH = 120
 export const MAX_DESCRIPTION_LENGTH = 1000
 export const MAX_TAGS = 10
-const MAX_TAG_LENGTH = 40
+export const MAX_TAG_LENGTH = 40
+// Tag yang layak: diawali huruf/angka, sisanya huruf, angka, spasi, atau "-". Berlaku juga untuk tag isian pemilik.
+export const TAG_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N}\s-]*$/u
 // Panjang cuplikan isi halaman bila situs tidak punya meta description.
 const FALLBACK_DESCRIPTION_LENGTH = 300
 
@@ -109,11 +111,7 @@ export default class SiteMetadataFetcher {
     // Hanya kata kunci yang layak dijadikan tag: diawali huruf/angka dan tidak terlalu panjang.
     private tags(keywords: string[]): string[] {
         return keywords
-            .filter(
-                (keyword) =>
-                    countChars(keyword) <= MAX_TAG_LENGTH &&
-                    /^[\p{L}\p{N}][\p{L}\p{N}\s-]*$/u.test(keyword)
-            )
+            .filter((keyword) => countChars(keyword) <= MAX_TAG_LENGTH && TAG_PATTERN.test(keyword))
             .slice(0, MAX_TAGS)
     }
 }

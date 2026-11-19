@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowUpRight, CircleAlert } from 'lucide-vue-next';
 import AppButton from '@/components/AppButton.vue';
 import AppInput from '@/components/AppInput.vue';
 import DomainAvatar from '@/components/DomainAvatar.vue';
+import DomainDetailsForm from '@/components/DomainDetailsForm.vue';
 import DomainStatusPanel from '@/components/DomainStatusPanel.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import PromotionToggle from '@/components/PromotionToggle.vue';
@@ -219,6 +220,8 @@ const isOtherMembersSite = computed(() => domain.value !== null && domain.value.
                             </AppInput>
                         </div>
                     </form>
+
+                    <DomainDetailsForm v-if="domain.can_manage" :domain="domain" @updated="applyStatusUpdate" />
                 </div>
 
                 <aside class="flex flex-col gap-6 lg:col-span-1">

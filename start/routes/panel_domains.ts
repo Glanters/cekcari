@@ -7,6 +7,7 @@ const DomainsController = () => import('#controllers/domains_controller')
 const DomainCrawlsController = () => import('#controllers/domain_crawls_controller')
 const DomainPromotionsController = () => import('#controllers/domain_promotions_controller')
 const DomainOwnersController = () => import('#controllers/domain_owners_controller')
+const DomainDetailsController = () => import('#controllers/domain_details_controller')
 
 // API situs milik member: hanya di domain panel. Hak akses per domain diperiksa di setiap controller.
 router
@@ -18,6 +19,9 @@ router
             .where('id', router.matchers.number())
         router
             .put('domains/:id/promotion', [DomainPromotionsController, 'update'])
+            .where('id', router.matchers.number())
+        router
+            .put('domains/:id/details', [DomainDetailsController, 'update'])
             .where('id', router.matchers.number())
         router.get('domain-owners', [DomainOwnersController, 'index'])
 

@@ -1,6 +1,12 @@
 import vine from '@vinejs/vine'
 import Domain from '#models/domain'
 import User from '#models/user'
+import {
+    MAX_DESCRIPTION_LENGTH,
+    MAX_TAG_LENGTH,
+    MAX_TAGS,
+    TAG_PATTERN,
+} from '#services/site_metadata_fetcher'
 import { addressOf } from '#support/site_address'
 import { localizedMessages } from '#validators/localized_messages'
 
@@ -94,6 +100,27 @@ export const updateDomainValidator = vine.withMetaData<LinkRuleMeta>().create({
 })
 
 updateDomainValidator.messagesProvider = localizedMessages(DOMAIN_FIELD_NAMES)
+
+/**
+ * Deskripsi dan tag isian pemilik. Deskripsi boleh dikosongkan; tag dibatasi sama seperti tag
+ * otomatis dari situs agar daftar tag tetap rapi.
+ */
+export const domainDetailsValidator = vine.create({
+    description: vine.string().trim().maxLength(MAX_DESCRIPTION_LENGTH),
+    tags: vine
+        .array(vine.string().trim().minLength(1).maxLength(MAX_TAG_LENGTH).regex(TAG_PATTERN))
+        .maxLength(MAX_TAGS),
+})
+
+domainDetailsValidator.messagesProvider = localizedMessages(
+    { description: 'deskripsi', tags: 'tag' },
+    {
+        'tags.*.regex': 'Tag hanya boleh berisi huruf, angka, spasi, dan tanda hubung.',
+        'tags.*.maxLength': `Setiap tag paling banyak ${MAX_TAG_LENGTH} karakter.`,
+        'tags.*.minLength': 'Tag tidak boleh kosong.',
+        'tags.array.maxLength': `Paling banyak ${MAX_TAGS} tag.`,
+    }
+)
 
 export const domainPromotionValidator = vine.create({
     is_promoted: vine.boolean(),

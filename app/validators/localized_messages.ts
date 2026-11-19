@@ -16,7 +16,10 @@ export function localizedMessages(
             field: FieldContext,
             args?: Record<string, any>
         ) {
-            const customMessage = customMessages[`${field.getFieldPath()}.${rule}`]
+            // Isi array dicari lewat pola "tags.*", bukan "tags.0", supaya satu pesan berlaku untuk semua isinya.
+            const customMessage =
+                customMessages[`${field.getFieldPath()}.${rule}`] ??
+                customMessages[`${field.wildCardPath}.${rule}`]
 
             if (customMessage) {
                 return customMessage

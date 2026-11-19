@@ -43,6 +43,13 @@ export default class Domain extends BaseModel {
     @column.dateTime()
     declare lastCrawledAt: DateTime | null
 
+    // Terisi bila pemilik mengubah deskripsi/tag sendiri; crawl berkala lalu tidak menimpanya.
+    @column.dateTime()
+    declare descriptionEditedAt: DateTime | null
+
+    @column.dateTime()
+    declare tagsEditedAt: DateTime | null
+
     @column()
     declare createdBy: number | null
 

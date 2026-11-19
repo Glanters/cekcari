@@ -18,6 +18,8 @@ const UNIQUE_VIOLATION = '23505'
 
 type ReachableSite = { siteUrl: string; metadata: SiteMetadata }
 
+export type DomainDetails = { description: string; tags: string[] }
+
 // Setara Str::slug untuk nama tag: huruf beraksen menjadi huruf dasar, selain huruf/angka menjadi "-".
 function slugOf(name: string): string {
     return name
@@ -26,6 +28,11 @@ function slugOf(name: string): string {
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '')
+}
+
+// Pembanding daftar tag: huruf kecil, tanpa duplikat, urutan dipertahankan (sama seperti syncTags).
+function normalizedTagList(names: string[]): string[] {
+    return [...new Set(names.map((name) => slugOf(name.trim().toLowerCase())).filter(Boolean))]
 }
 
 function isUniqueViolation(error: unknown): boolean {
@@ -81,13 +88,19 @@ export default class DomainService {
         // Link berbeda berarti cakupan crawl berbeda, jadi halaman lama tidak berlaku lagi.
         const isLinkChanged = addressOf(url) !== addressOf(domain.url)
 
+        // Isian pemilik milik link lama; link baru (situs lain) kembali memakai data otomatis.
+        const keepsDescription = !isLinkChanged && domain.descriptionEditedAt !== null
+        const keepsTags = !isLinkChanged && domain.tagsEditedAt !== null
+
         await db.transaction(async (trx) => {
             domain.useTransaction(trx)
             domain.merge({
                 url: siteUrl,
                 host: hostOf(url),
                 title: metadata.title,
-                description: metadata.description,
+                description: keepsDescription ? domain.description : metadata.description,
+                descriptionEditedAt: keepsDescription ? domain.descriptionEditedAt : null,
+                tagsEditedAt: keepsTags ? domain.tagsEditedAt : null,
                 logoUrl,
                 crawlStatus: 'pending',
                 lastCrawledAt: isLinkChanged ? null : domain.lastCrawledAt,
@@ -99,7 +112,9 @@ export default class DomainService {
                 await domain.related('pages').query().delete()
             }
 
-            await this.syncTags(domain, metadata.tags, trx)
+            if (!keepsTags) {
+                await this.syncTags(domain, metadata.tags, trx)
+            }
             await dispatchDomainCrawl(domain.id, trx)
         })
 
@@ -108,15 +123,56 @@ export default class DomainService {
 
     /**
      * Dipakai crawler agar judul, deskripsi, tag, dan logo mengikuti perubahan di situs pemilik.
+     * Deskripsi atau tag yang sudah diubah pemilik sendiri tidak ditimpa.
      */
     async refreshMetadata(domain: Domain, metadata: SiteMetadata): Promise<void> {
         const logoUrl = await this.iconFinder.find(metadata.iconUrl, domain.url)
 
         await db.transaction(async (trx) => {
             domain.useTransaction(trx)
-            domain.merge({ title: metadata.title, description: metadata.description, logoUrl })
+            domain.merge({ title: metadata.title, logoUrl })
+
+            if (domain.descriptionEditedAt === null) {
+                domain.description = metadata.description
+            }
+
             await domain.save()
-            await this.syncTags(domain, metadata.tags, trx)
+
+            if (domain.tagsEditedAt === null) {
+                await this.syncTags(domain, metadata.tags, trx)
+            }
+        })
+    }
+
+    /**
+     * Deskripsi dan tag isian pemilik (atau superadmin). Hanya bagian yang benar-benar berubah yang
+     * ditandai, supaya tag tetap otomatis bila pemilik hanya mengubah deskripsi, dan sebaliknya.
+     */
+    async updateDetails(domain: Domain, editor: User, details: DomainDetails): Promise<void> {
+        const currentTags = domain.tags.map((tag) => tag.name)
+        const isDescriptionChanged = details.description !== domain.description
+        const isTagsChanged =
+            JSON.stringify(normalizedTagList(details.tags)) !==
+            JSON.stringify(normalizedTagList(currentTags))
+        const now = DateTime.now()
+
+        await db.transaction(async (trx) => {
+            domain.useTransaction(trx)
+            domain.merge({ updatedBy: editor.id })
+
+            if (isDescriptionChanged) {
+                domain.merge({ description: details.description, descriptionEditedAt: now })
+            }
+
+            if (isTagsChanged) {
+                domain.tagsEditedAt = now
+            }
+
+            await domain.save()
+
+            if (isTagsChanged) {
+                await this.syncTags(domain, details.tags, trx)
+            }
         })
     }
 
