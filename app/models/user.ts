@@ -88,8 +88,10 @@ export default class User extends BaseModel {
         return this.activatedAt !== null
     }
 
+    // Akun yang baru dibuat (new User()) belum punya nilai kolom ini: undefined, bukan null.
+    // Keduanya berarti 2FA belum dipasang, jadi tidak boleh dibandingkan dengan null saja.
     get hasConfirmedTwoFactor(): boolean {
-        return this.twoFactorConfirmedAt !== null && this.twoFactorSecret !== null
+        return Boolean(this.twoFactorConfirmedAt) && Boolean(this.twoFactorSecret)
     }
 
     /**
