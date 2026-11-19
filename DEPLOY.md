@@ -64,6 +64,33 @@ Bila domain harus selalu lewat Cloudflare, pakai Origin Certificate: simpan ke
 Bila sertifikat gagal terbit: pastikan A record menunjuk ke IP server, domain tidak lagi ada di
 Cloudflare Tunnel, dan record sementara **DNS only** (bukan Proxied) selama sertifikat diterbitkan.
 
+## Pindah domain (mis. dari server uji ke cekcari.com)
+
+1. **DNS:** buat A record `cekcari.com`, `www.cekcari.com`, dan `panel.cekcari.com` ke IP server.
+2. **Akun dummy:** bila server uji memakai akun dummy, hapus dulu selagi login dummy masih aktif:
+   `cd /opt/cekcari/build && ENV_PATH=../ node ace user:create-dummies --remove`
+3. **`.env`:**
+
+   ```dotenv
+   NODE_ENV=production
+   SEARCH_DOMAIN=cekcari.com
+   PANEL_DOMAIN=panel.cekcari.com
+   SEARCH_URL=https://cekcari.com
+   SEO_ALLOW_INDEXING=true
+   ACCOUNTCENTER_DRIVER=http
+   ACCOUNTCENTER_DUMMY_IN_PRODUCTION=false
+   ```
+
+   Isi juga `ACCOUNTCENTER_URI`, `ACCOUNTCENTER_NAME`, `ACCOUNTCENTER_SECRET`, dan
+   `ACCOUNTCENTER_SUPERADMIN_EMAILS` dengan data Account Center asli.
+4. **Jalankan ulang aplikasi** dengan `.env` baru: `pm2 startOrRestart ecosystem.config.cjs --update-env`.
+5. **Nginx dan sertifikat:** `sudo bash deploy/setup-domain.sh`. Sertifikat diterbitkan ulang untuk domain
+   baru, dan `www.cekcari.com` dialihkan 301 ke `https://cekcari.com`.
+6. **Google:** daftarkan `https://cekcari.com` di Google Search Console, isi `GOOGLE_SITE_VERIFICATION`,
+   jalankan ulang langkah 4, lalu kirim `https://cekcari.com/sitemap.xml`.
+
+Semua pengguna perlu masuk ulang di `https://panel.cekcari.com/masuk`, karena sesi terikat ke domain lama.
+
 ## Setelah naik production
 
 - Nyalakan 2FA di menu **Keamanan** panel.

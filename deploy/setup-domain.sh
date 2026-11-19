@@ -7,7 +7,10 @@
 #   sudo ./deploy/setup-domain.sh --letsencrypt
 #
 # Domain dan port dibaca dari .env (SEARCH_DOMAIN, PANEL_DOMAIN, PORT), jadi tidak bisa berbeda
-# dari yang dipakai aplikasi.
+# dari yang dipakai aplikasi. Bila www.<SEARCH_DOMAIN> punya DNS (mis. www.cekcari.com), alamat itu
+# ikut masuk sertifikat dan dialihkan 301 ke SEARCH_DOMAIN, supaya Google hanya melihat satu alamat.
+# Ganti domain (mis. dari server uji ke cekcari.com) cukup ubah .env lalu jalankan ulang skrip ini:
+# sertifikat yang belum memuat semua domain diterbitkan ulang.
 #
 # ## Dua jalur sertifikat (sama seperti hrms)
 #
@@ -86,6 +89,13 @@ APP_PORT="$(nilai_env PORT)"
 
 DOMAINS=("$SEARCH_DOMAIN" "$PANEL_DOMAIN")
 
+# www hanya dipakai sebagai pengalihan ke domain pencarian, dan hanya bila DNS-nya memang ada.
+WWW_DOMAIN=""
+if [[ "$SEARCH_DOMAIN" != www.* && -n "$(dig +short "www.$SEARCH_DOMAIN" A | tail -n1)" ]]; then
+    WWW_DOMAIN="www.$SEARCH_DOMAIN"
+    DOMAINS+=("$WWW_DOMAIN")
+fi
+
 # ------------------------------------------------------ aplikasi sudah berjalan?
 
 # Pelajaran dari pemasangan pertama: port yang dipakai aplikasi lain membuat domain CekCari
@@ -158,8 +168,8 @@ if [[ "$MODE" == "cloudflare" ]]; then
 
 Terbitkan sekali, berlaku 15 tahun, tanpa perpanjangan:
 
-  1. Dasbor Cloudflare → salahmu.fun → SSL/TLS → Origin Server → Create Certificate
-     Hostnames: $SEARCH_DOMAIN, $PANEL_DOMAIN   (atau *.salahmu.fun)
+  1. Dasbor Cloudflare → domain Anda → SSL/TLS → Origin Server → Create Certificate
+     Hostnames: ${DOMAINS[*]}
      Biarkan RSA 2048 dan masa berlaku 15 tahun.
 
   2. Salin kedua blok teksnya ke server ini:
@@ -181,19 +191,29 @@ PETUNJUK
     # Origin Certificate diterbitkan per hostname; sertifikat milik domain lain menghasilkan 526.
     for domain in "${DOMAINS[@]}"; do
         openssl x509 -in "$JALUR_CERT" -noout -checkhost "$domain" 2>/dev/null | grep -q 'does match' ||
-            gagal "$JALUR_CERT tidak memuat $domain. Terbitkan ulang dengan kedua hostname."
+            gagal "$JALUR_CERT tidak memuat $domain. Terbitkan ulang dengan hostname: ${DOMAINS[*]}"
     done
 
-    hijau "Origin Certificate ditemukan dan memuat kedua domain."
+    hijau "Origin Certificate ditemukan dan memuat semua domain."
 else
     JALUR_CERT="/etc/letsencrypt/live/$NAMA_SITUS/fullchain.pem"
     JALUR_KEY="/etc/letsencrypt/live/$NAMA_SITUS/privkey.pem"
 
     command -v certbot >/dev/null 2>&1 || gagal "\`certbot\` tidak ada. Pasang lebih dulu:  sudo apt install certbot"
 
-    # Sertifikat yang sudah ada tidak diminta ulang: jatah Let's Encrypt 5 penerbitan per pekan.
+    # Sertifikat yang sudah memuat semua domain tidak diminta ulang: jatah Let's Encrypt
+    # 5 penerbitan per pekan. Setelah domain di .env diganti, sertifikat lama tidak memuatnya lagi.
+    SERTIFIKAT_LENGKAP=false
     if [[ -f "$JALUR_CERT" ]]; then
-        info "Sertifikat CekCari sudah ada — tidak diminta ulang."
+        SERTIFIKAT_LENGKAP=true
+        for domain in "${DOMAINS[@]}"; do
+            openssl x509 -in "$JALUR_CERT" -noout -checkhost "$domain" 2>/dev/null | grep -q 'does match' ||
+                SERTIFIKAT_LENGKAP=false
+        done
+    fi
+
+    if [[ "$SERTIFIKAT_LENGKAP" == "true" ]]; then
+        info "Sertifikat CekCari sudah memuat semua domain — tidak diminta ulang."
     else
         info "Menerbitkan sertifikat untuk ${DOMAINS[*]} …"
         SEMENTARA="/etc/nginx/sites-available/$NAMA_SITUS.acme"
@@ -218,10 +238,16 @@ KONFIG
         nginx -t || gagal "Konfigurasi sementara ditolak Nginx."
         systemctl reload nginx
 
+        DOMAIN_ARGS=()
+        for domain in "${DOMAINS[@]}"; do
+            DOMAIN_ARGS+=(-d "$domain")
+        done
+
+        # --cert-name yang sama mengganti daftar domain sertifikat lama (mis. domain server uji).
         if ! certbot certonly --webroot -w "$WEBROOT_ACME" --non-interactive --agree-tos \
             --register-unsafely-without-email --cert-name "$NAMA_SITUS" \
             --deploy-hook "systemctl reload nginx" \
-            -d "$SEARCH_DOMAIN" -d "$PANEL_DOMAIN"; then
+            "${DOMAIN_ARGS[@]}"; then
             rm -f "/etc/nginx/sites-enabled/$NAMA_SITUS.acme" "$SEMENTARA"
             systemctl reload nginx || true
             merah "Penerbitan sertifikat gagal. Detail: /var/log/letsencrypt/letsencrypt.log"
@@ -229,7 +255,7 @@ KONFIG
 
 Penyebab yang paling sering:
   - Domain masih di Public Hostname Cloudflare Tunnel → hapus dari tunnel.
-  - DNS belum berupa A record ke IP server ini → buat A record \`cari\` dan \`panel-cari\`.
+  - DNS belum berupa A record ke IP server ini → buat A record untuk ${DOMAINS[*]}.
   - Domain diproksi Cloudflare (awan jingga) dengan "Always Use HTTPS" → ubah kedua record ke
     "DNS only" (awan abu-abu), jalankan ulang, lalu boleh dikembalikan ke Proxied dengan
     SSL/TLS "Full (strict)".
@@ -266,6 +292,32 @@ sed -e "s|__SEARCH_DOMAIN__|$SEARCH_DOMAIN|g" \
     -e "s|__SSL_CERTIFICATE_KEY__|$JALUR_KEY|g" \
     "$TEMPLAT" >"$SITE_TERSEDIA"
 
+if [[ -n "$WWW_DOMAIN" ]]; then
+    cat >>"$SITE_TERSEDIA" <<KONFIG
+
+# www dialihkan permanen ke domain pencarian (satu alamat untuk Google). Ditambahkan setup-domain.sh.
+server {
+    listen 80;
+    listen 443 ssl http2;
+    server_name $WWW_DOMAIN;
+
+    ssl_certificate     $JALUR_CERT;
+    ssl_certificate_key $JALUR_KEY;
+
+    server_tokens off;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root $WEBROOT_ACME;
+    }
+
+    location / {
+        return 301 https://$SEARCH_DOMAIN\$request_uri;
+    }
+}
+KONFIG
+    info "$WWW_DOMAIN dialihkan ke https://$SEARCH_DOMAIN."
+fi
+
 if [[ "$BEHIND_CLOUDFLARE" == "true" ]]; then
     if [[ ! -f /etc/nginx/cloudflare-realip.conf ]]; then
         info "Menyusun daftar rentang Cloudflare …"
@@ -291,7 +343,7 @@ systemctl reload nginx 2>/dev/null || systemctl start nginx
 
 # ------------------------------------------------------------------- periksa
 
-for domain in "${DOMAINS[@]}"; do
+for domain in "$SEARCH_DOMAIN" "$PANEL_DOMAIN"; do
     HASIL="$(curl -sk --max-time 10 --resolve "$domain:443:127.0.0.1" "https://$domain/up" || true)"
     [[ "$HASIL" == *'"status":"ok"'* ]] || gagal "nginx tidak meneruskan $domain ke CekCari (jawaban: ${HASIL:-tidak ada})."
 done
