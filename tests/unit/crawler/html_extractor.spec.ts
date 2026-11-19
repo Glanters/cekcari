@@ -16,7 +16,10 @@ test.group('HtmlExtractor', () => {
         assert.equal(extracted.title, 'Tokoku Resmi')
         assert.equal(extracted.description, 'Toko perabot.')
         assert.deepEqual(extracted.keywords, ['dapur', 'rumah tangga'])
-        assert.equal(extracted.iconUrl, 'https://tokoku.com/apple.png')
+        assert.deepEqual(extracted.icons, {
+            faviconUrl: 'https://tokoku.com/favicon.png',
+            touchIconUrl: 'https://tokoku.com/apple.png',
+        })
         assert.equal(extracted.text, 'Selamat datangProdukIklanSuratLagi')
         assert.deepEqual(extracted.links, ['https://tokoku.com/produk'])
     })
@@ -29,6 +32,6 @@ test.group('HtmlExtractor', () => {
 
         assert.equal(extracted.title, 'Judul OG')
         assert.isNull(extracted.description)
-        assert.isNull(extracted.iconUrl)
+        assert.deepEqual(extracted.icons, { faviconUrl: null, touchIconUrl: null })
     })
 })

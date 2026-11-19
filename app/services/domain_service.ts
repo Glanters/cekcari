@@ -53,7 +53,7 @@ export default class DomainService {
      */
     async create(actor: User, url: string, ownerId: number = actor.id): Promise<Domain> {
         const { siteUrl, metadata } = await this.fetchReachableSite(url)
-        const logoUrl = await this.iconFinder.find(metadata.iconUrl, siteUrl)
+        const logoUrl = await this.iconFinder.find(metadata.icons, siteUrl)
 
         return db.transaction(async (trx) => {
             const domain = await Domain.create(
@@ -84,7 +84,7 @@ export default class DomainService {
      */
     async update(domain: Domain, editor: User, url: string): Promise<Domain> {
         const { siteUrl, metadata } = await this.fetchReachableSite(url)
-        const logoUrl = await this.iconFinder.find(metadata.iconUrl, siteUrl)
+        const logoUrl = await this.iconFinder.find(metadata.icons, siteUrl)
         // Link berbeda berarti cakupan crawl berbeda, jadi halaman lama tidak berlaku lagi.
         const isLinkChanged = addressOf(url) !== addressOf(domain.url)
 
@@ -126,7 +126,7 @@ export default class DomainService {
      * Deskripsi atau tag yang sudah diubah pemilik sendiri tidak ditimpa.
      */
     async refreshMetadata(domain: Domain, metadata: SiteMetadata): Promise<void> {
-        const logoUrl = await this.iconFinder.find(metadata.iconUrl, domain.url)
+        const logoUrl = await this.iconFinder.find(metadata.icons, domain.url)
 
         await db.transaction(async (trx) => {
             domain.useTransaction(trx)
@@ -174,6 +174,38 @@ export default class DomainService {
                 await this.syncTags(domain, details.tags, trx)
             }
         })
+    }
+
+    /**
+     * Membaca ulang ikon satu situs tanpa crawl penuh (dipakai perintah domains:refresh-icons).
+     * Mengembalikan true bila logo berubah. Situs yang tidak bisa dibaca dibiarkan apa adanya.
+     */
+    async refreshIcon(domain: Domain): Promise<boolean> {
+        let metadata: SiteMetadata
+
+        try {
+            metadata = await this.metadataFetcher.fetch(domain.url, domain.host)
+        } catch (error) {
+            if (error instanceof RemoteFetchException) {
+                return false
+            }
+
+            throw error
+        }
+
+        const logoUrl = await this.iconFinder.find(metadata.icons, domain.url)
+
+        if (logoUrl === domain.logoUrl) {
+            return false
+        }
+
+        await db.transaction(async (trx) => {
+            domain.useTransaction(trx)
+            domain.logoUrl = logoUrl
+            await domain.save()
+        })
+
+        return true
     }
 
     async delete(domain: Domain, editor: User): Promise<void> {

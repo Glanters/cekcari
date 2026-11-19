@@ -217,13 +217,8 @@ watch(
                     </section>
 
                     <ol class="mt-1 divide-y divide-ink-200/80" aria-label="Hasil pencarian">
-                        <li v-for="(result, index) in results" :key="result.id">
-                            <ResultCard
-                                :result="result"
-                                :markers="markers"
-                                :position="(currentPage - 1) * PER_PAGE + index + 1"
-                                is-tracked
-                            />
+                        <li v-for="result in results" :key="result.id">
+                            <ResultCard :result="result" :markers="markers" is-tracked />
                         </li>
                     </ol>
 

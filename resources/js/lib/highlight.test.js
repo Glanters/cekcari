@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { splitHighlightedText } from './highlight';
+import { splitHighlightedText, stripHighlightMarkers } from './highlight';
 
 const START = '⟦';
 const END = '⟧';
@@ -33,5 +33,11 @@ describe('splitHighlightedText', () => {
 
     it('mengembalikan daftar kosong untuk teks kosong', () => {
         expect(splitHighlightedText(null, START, END)).toEqual([]);
+    });
+});
+
+describe('stripHighlightMarkers', () => {
+    it('menghapus semua penanda', () => {
+        expect(stripHighlightMarkers(`${START}Toko${END}ku`, START, END)).toBe('Tokoku');
     });
 });

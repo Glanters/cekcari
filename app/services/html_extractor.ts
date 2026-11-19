@@ -5,11 +5,14 @@ import { crawler } from '#config/cekcari'
 import UrlResolver from '#services/url_resolver'
 import { sliceChars } from '#support/characters'
 
+// Ikon yang dinyatakan halaman: favicon biasa (rel="icon") dan logo besar untuk layar ponsel.
+export type SiteIcons = { faviconUrl: string | null; touchIconUrl: string | null }
+
 export type ExtractedHtml = {
     title: string | null
     description: string | null
     keywords: string[]
-    iconUrl: string | null
+    icons: SiteIcons
     text: string
     links: string[]
 }
@@ -55,11 +58,11 @@ export default class HtmlExtractor {
             metaContent('property', 'og:description'),
         ])
         const keywords = this.keywords($)
-        const iconUrl = this.iconUrl($, pageUrl)
+        const icons = this.icons($, pageUrl)
         const text = this.visibleText($)
         const links = this.links($, pageUrl)
 
-        return { title, description, keywords, iconUrl, text, links }
+        return { title, description, keywords, icons, text, links }
     }
 
     // Nilai pertama yang tidak kosong; setiap pembaca hanya melihat elemen pertama yang cocok.
@@ -87,14 +90,18 @@ export default class HtmlExtractor {
         return [...new Set(keywords.filter((keyword) => keyword !== ''))]
     }
 
-    // apple-touch-icon didahulukan karena biasanya beresolusi lebih tinggi dari favicon biasa.
-    private iconUrl($: CheerioAPI, pageUrl: string): string | null {
-        const href = this.firstValue($, [
-            linkHref((rel) => rel.includes('apple-touch-icon')),
-            linkHref((rel) => rel.split(/\s+/).includes('icon')),
-        ])
+    private icons($: CheerioAPI, pageUrl: string): SiteIcons {
+        const resolve = (href: string | null) =>
+            href !== null ? this.urlResolver.resolve(pageUrl, href) : null
 
-        return href !== null ? this.urlResolver.resolve(pageUrl, href) : null
+        return {
+            faviconUrl: resolve(
+                this.firstValue($, [linkHref((rel) => rel.split(/\s+/).includes('icon'))])
+            ),
+            touchIconUrl: resolve(
+                this.firstValue($, [linkHref((rel) => rel.includes('apple-touch-icon'))])
+            ),
+        }
     }
 
     private visibleText($: CheerioAPI): string {

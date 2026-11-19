@@ -1,6 +1,6 @@
 import { inject } from '@adonisjs/core'
 import { RemoteFetchException, SiteRedirectedException } from '#exceptions/remote_fetch_exception'
-import HtmlExtractor, { type ExtractedHtml } from '#services/html_extractor'
+import HtmlExtractor, { type ExtractedHtml, type SiteIcons } from '#services/html_extractor'
 import RemotePageFetcher from '#services/remote_page_fetcher'
 import { countChars, sliceChars } from '#support/characters'
 import { hostOf, isSameSite } from '#support/site_address'
@@ -9,7 +9,7 @@ export type SiteMetadata = {
     title: string
     description: string
     tags: string[]
-    iconUrl: string | null
+    icons: SiteIcons
 }
 
 export const MAX_TITLE_LENGTH = 120
@@ -61,7 +61,7 @@ export default class SiteMetadataFetcher {
             title: sliceChars(extracted.title ?? host, MAX_TITLE_LENGTH),
             description: this.description(extracted),
             tags: this.tags(extracted.keywords),
-            iconUrl: extracted.iconUrl,
+            icons: extracted.icons,
         }
     }
 
@@ -83,7 +83,7 @@ export default class SiteMetadataFetcher {
             ),
             description: `Link menuju ${targetHost}.`,
             tags: [],
-            iconUrl: null,
+            icons: { faviconUrl: null, touchIconUrl: null },
         }
     }
 

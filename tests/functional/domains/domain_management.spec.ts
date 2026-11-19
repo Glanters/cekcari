@@ -292,6 +292,59 @@ test.group('Panel domain: menambah dan mengubah link', (group) => {
         response.assertBodyContains({ data: { logo_url: 'https://tokoku.com/logo.svg' } })
     })
 
+    test('memakai favicon situs, bukan logo besar apple-touch-icon', async ({ client }) => {
+        fakeRemoteSites({
+            'tokoku.com/favicon-32.png': { status: 200, body: PNG_BYTES, contentType: 'image/png' },
+            'tokoku.com/apple-touch-icon.png': {
+                status: 200,
+                body: PNG_BYTES,
+                contentType: 'image/png',
+            },
+            'tokoku.com/*': htmlPage(
+                '<html><head><title>Tokoku</title><link rel="apple-touch-icon" href="/apple-touch-icon.png">' +
+                    '<link rel="icon" href="/favicon-32.png"></head><body>Halo</body></html>'
+            ),
+        })
+
+        const response = await panel(client)
+            .post('/api/v1/domains')
+            .json({ url: 'https://tokoku.com' })
+            .withCsrfToken()
+            .loginAs(await createUser())
+
+        response.assertStatus(201)
+        response.assertBodyContains({ data: { logo_url: 'https://tokoku.com/favicon-32.png' } })
+    })
+
+    test('mencoba /favicon.ico lalu apple-touch-icon bila favicon yang dinyatakan rusak', async ({
+        client,
+    }) => {
+        fakeRemoteSites({
+            'tokoku.com/rusak.png': { status: 404 },
+            'tokoku.com/favicon.ico': { status: 404 },
+            'tokoku.com/apple-touch-icon.png': {
+                status: 200,
+                body: PNG_BYTES,
+                contentType: 'image/png',
+            },
+            'tokoku.com/*': htmlPage(
+                '<html><head><title>Tokoku</title><link rel="icon" href="/rusak.png">' +
+                    '<link rel="apple-touch-icon" href="/apple-touch-icon.png"></head><body>Halo</body></html>'
+            ),
+        })
+
+        const response = await panel(client)
+            .post('/api/v1/domains')
+            .json({ url: 'https://tokoku.com' })
+            .withCsrfToken()
+            .loginAs(await createUser())
+
+        response.assertStatus(201)
+        response.assertBodyContains({
+            data: { logo_url: 'https://tokoku.com/apple-touch-icon.png' },
+        })
+    })
+
     test('menolak link yang situsnya tidak dapat dibuka', async ({ client, assert }) => {
         fakeRemoteSites({ 'mati.com/*': { status: 404, body: 'Not found' } })
 

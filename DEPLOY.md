@@ -75,6 +75,15 @@ Email: `superadmin@dummy.test`, `member1@dummy.test` … `member5@dummy.test`. J
 (`--members=10`), dan semuanya dihapus lagi dengan `--remove` (situs milik akun dummy ikut terhapus).
 Perintah ini menolak berjalan bila server memakai Account Center asli.
 
+## Baca ulang favicon semua situs
+
+Ikon di hasil pencarian memakai favicon tiap situs (logo besar `apple-touch-icon` hanya cadangan).
+Ikon diperbarui otomatis saat crawl mingguan; untuk memperbarui semuanya sekarang:
+
+```bash
+cd /opt/cekcari/build && ENV_PATH=../ node ace domains:refresh-icons
+```
+
 ## Cek & log
 
 ```bash

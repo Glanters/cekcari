@@ -3,6 +3,7 @@ import logger from '@adonisjs/core/services/logger'
 import { crawler } from '#config/cekcari'
 import { RemoteFetchException } from '#exceptions/remote_fetch_exception'
 import type FetchedPage from '#services/fetched_page'
+import type { SiteIcons } from '#services/html_extractor'
 import RemotePageFetcher from '#services/remote_page_fetcher'
 import { originOf } from '#support/site_address'
 
@@ -36,13 +37,34 @@ function startsWith(bytes: Buffer, signature: number[]): boolean {
  * Mencari ikon situs dan mengembalikan alamatnya. Logo tidak disimpan di server: halaman CekCari
  * menampilkannya langsung dari domain pemilik situs. Ikon diperiksa dulu agar alamat yang disimpan
  * benar-benar gambar, bukan halaman error. Bila tidak ada ikon yang layak, domain tetap tersimpan tanpa logo.
+ *
+ * Favicon didahulukan: dibuat untuk ukuran kecil seperti ikon di daftar hasil. apple-touch-icon
+ * (logo besar untuk layar ponsel, sering berupa banner) hanya dipakai bila situs tidak punya favicon.
  */
 @inject()
 export default class SiteIconFinder {
     constructor(private readonly fetcher: RemotePageFetcher) {}
 
-    async find(iconUrl: string | null, siteUrl: string): Promise<string | null> {
-        const candidateUrl = iconUrl ?? `${originOf(siteUrl)}/favicon.ico`
+    async find(icons: SiteIcons, siteUrl: string): Promise<string | null> {
+        const candidateUrls = [
+            icons.faviconUrl,
+            `${originOf(siteUrl)}/favicon.ico`,
+            icons.touchIconUrl,
+        ].filter((url): url is string => url !== null)
+
+        for (const candidateUrl of new Set(candidateUrls)) {
+            const iconUrl = await this.imageUrlOf(candidateUrl)
+
+            if (iconUrl !== null) {
+                return iconUrl
+            }
+        }
+
+        return null
+    }
+
+    // Alamat akhir ikon (setelah redirect) bila berkas itu benar-benar gambar; null bila tidak.
+    private async imageUrlOf(candidateUrl: string): Promise<string | null> {
         let icon: FetchedPage
 
         try {
